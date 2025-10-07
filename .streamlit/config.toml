@@ -1,0 +1,7 @@
+[theme]
+# Colores principales de la aplicación
+primaryColor="#0d6efd"  # Azul primario (para botones, sliders, etc.)
+backgroundColor="#FFFFFF"  # Fondo principal blanco
+secondaryBackgroundColor="#F0F2F6"  # Fondo secundario (para la barra lateral y contenedores)
+textColor="#262730"  # Color del texto principal
+font="sans serif"
