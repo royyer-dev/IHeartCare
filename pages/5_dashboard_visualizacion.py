@@ -2,6 +2,10 @@ import streamlit as st
 import pandas as pd
 from sqlalchemy import text
 import altair as alt
+from auth import require_auth  # ← AGREGAR
+
+# --- PROTECCIÓN DE RUTA ---
+require_auth(allowed_roles=['administrador', 'medico'])  # ← AGREGAR
 
 # --- Configuración de la Página ---
 st.set_page_config(

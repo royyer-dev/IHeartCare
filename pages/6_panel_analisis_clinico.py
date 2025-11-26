@@ -4,7 +4,10 @@ import numpy as np
 import altair as alt
 from sqlalchemy import text
 from datetime import datetime, timedelta, time
+from auth import require_auth  # ← AGREGAR
 
+# --- PROTECCIÓN DE RUTA ---
+require_auth(allowed_roles=['administrador', 'medico'])  # ← AGREGAR
 # --- Configuración de la Página ---
 st.set_page_config(
     page_title="Panel de Análisis Clínico",

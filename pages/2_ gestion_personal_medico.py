@@ -1,6 +1,10 @@
 import streamlit as st
 import pandas as pd
 from sqlalchemy import text
+from auth import require_auth, registrar_usuario_medico  # ← AGREGAR
+
+# --- PROTECCIÓN DE RUTA ---
+require_auth(allowed_roles=['administrador'])  # ← AGREGAR ESTA LÍNEA
 
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="Gestión de Personal Médico", page_icon="👨‍⚕️", layout="wide")
@@ -36,6 +40,21 @@ with tab1:
             st.subheader("Información de Contacto")
             email = st.text_input("Correo Electrónico", placeholder="ejemplo@correo.com")
             
+            # AGREGAR NUEVA SECCIÓN ANTES DEL BOTÓN SUBMIT:
+            st.subheader("Credenciales de Acceso (Opcional)")
+            st.info("Si desea crear un usuario para este médico, complete los siguientes campos:")
+            crear_usuario = st.checkbox("Crear usuario para acceso al sistema")
+            
+            username_medico = None
+            password_medico = None
+            
+            if crear_usuario:
+                col1, col2 = st.columns(2)
+                with col1:
+                    username_medico = st.text_input("Nombre de Usuario", placeholder="Ej. dr.lopez")
+                with col2:
+                    password_medico = st.text_input("Contraseña", type="password", placeholder="Mínimo 6 caracteres")
+            
             submit_button = st.form_submit_button(label="Registrar Profesional", use_container_width=True)
 
             if submit_button:
@@ -47,14 +66,24 @@ with tab1:
                             sql = """
                                 INSERT INTO public.personal_medico (nombre, apellido_paterno, apellido_materno, especialidad, cedula_profesional, cedula_especialidad, universidad, email)
                                 VALUES (:nombre, :paterno, :materno, :especialidad, :ced_prof, :ced_esp, :uni, :email)
+                                RETURNING id
                             """
-                            s.execute(text(sql), params={
+                            medico_id = s.execute(text(sql), params={
                                 "nombre": nombre, "paterno": apellido_paterno, "materno": apellido_materno,
                                 "especialidad": especialidad, "ced_prof": cedula_profesional, 
                                 "ced_esp": cedula_especialidad, "uni": universidad, "email": email
-                            })
+                            }).fetchone()[0]
                             s.commit()
+                        
                         st.success("¡Profesional registrado exitosamente!")
+                        
+                        # CREAR USUARIO SI SE SOLICITÓ
+                        if crear_usuario and username_medico and password_medico:
+                            if registrar_usuario_medico(username_medico, password_medico, medico_id):
+                                st.success("✅ Usuario médico creado exitosamente")
+                            else:
+                                st.warning("⚠️ Médico registrado pero no se pudo crear el usuario")
+                                
                     except Exception as e:
                         st.error(f"Ocurrió un error al registrar: {e}")
 

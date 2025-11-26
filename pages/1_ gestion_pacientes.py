@@ -2,6 +2,10 @@ import streamlit as st
 import pandas as pd
 from datetime import date
 from sqlalchemy import text
+from auth import require_auth  # ← AGREGAR ESTA LÍNEA
+
+# --- PROTECCIÓN DE RUTA ---
+require_auth(allowed_roles=['administrador'])  # ← AGREGAR ESTA LÍNEA
 
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="Gestión de Pacientes", page_icon="👤", layout="wide")

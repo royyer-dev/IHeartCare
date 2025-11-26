@@ -1,7 +1,10 @@
 import streamlit as st
 from sqlalchemy import text
 import pandas as pd
+from auth import require_auth  # ← AGREGAR ESTA LÍNEA
 
+# --- PROTECCIÓN DE RUTA ---
+require_auth(allowed_roles=['administrador'])  # ← AGREGAR ESTA LÍNEA
 # Configuración de la página
 st.set_page_config(
     page_title="Gestión de Monitoreo",
