@@ -1,0 +1,2 @@
+# Archivos de configuración y secretos de Streamlit
+.streamlit/secrets.toml
