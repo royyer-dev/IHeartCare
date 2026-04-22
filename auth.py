@@ -47,11 +47,11 @@ def logout_user():
 def require_auth(allowed_roles=None):
     """Decorador para proteger páginas según rol."""
     if 'authenticated' not in st.session_state or not st.session_state.authenticated:
-        st.warning("⚠️ Debes iniciar sesión para acceder a esta página.")
+        st.warning("Debes iniciar sesión para acceder a esta página.")
         st.stop()
     
     if allowed_roles and st.session_state.rol not in allowed_roles:
-        st.error("🚫 No tienes permisos para acceder a esta sección.")
+        st.error("No tienes permisos para acceder a esta sección.")
         st.stop()
 
 def registrar_usuario_paciente(username, password, paciente_id):

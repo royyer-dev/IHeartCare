@@ -1,281 +1,622 @@
+
 import streamlit as st
+from sqlalchemy import text
 from auth import login_user, logout_user
+from theme import apply_global_theme
+from sidebar import render_sidebar
+from utils import (
+    breadcrumb_nav,
+    hero_section,
+    metric_card,
+    metric_card_container,
+    section_divider,
+    patient_card,
+    status_indicator,
+    obtener_notificaciones_pendientes,
+    contar_notificaciones_pendientes,
+)
+import json
+import os
+from pathlib import Path
 
 st.set_page_config(
-    page_title="I-HeartCare - Inicio",
-    page_icon="🩺",
-    layout="wide"
+    page_title="IHeartCare - Dashboard",
+    page_icon="❤️",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# Inicializar session_state
+apply_global_theme()
+
+# Archivo para guardar credenciales recordadas
+CREDENTIALS_FILE = Path.home() / ".iheartcare_credentials.json"
+
+def load_saved_credentials():
+    """Carga credenciales guardadas localmente."""
+    if CREDENTIALS_FILE.exists():
+        try:
+            with open(CREDENTIALS_FILE, 'r') as f:
+                return json.load(f)
+        except:
+            return {"username": "", "remember": False}
+    return {"username": "", "remember": False}
+
+def save_credentials(username, remember):
+    """Guarda credenciales localmente."""
+    try:
+        with open(CREDENTIALS_FILE, 'w') as f:
+            json.dump({"username": username, "remember": remember}, f)
+    except:
+        pass
+
+# --- ANIMACIONES GLOBALES ---
+st.markdown("""
+<style>
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.page-container {
+    animation: fadeIn 0.6s ease;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# --- LOGIN LOGIC ---
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 
-# --- OCULTAR SIDEBAR Y TODO HASTA QUE INICIE SESIÓN ---
 if not st.session_state.authenticated:
-    # Ocultar sidebar completamente
-    st.markdown("""
-        <style>
-            [data-testid="stSidebar"] {display: none;}
-            header {visibility: hidden;}
-        </style>
-    """, unsafe_allow_html=True)
     
-    # --- PÁGINA DE LOGIN (SIN DASHBOARD) ---
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        st.title("🩺 I-HeartCare")
-        st.subheader("Sistema de Monitoreo Cardíaco")
-        st.markdown("---")
+        # Cargar credenciales guardadas
+        saved = load_saved_credentials()
         
-        tab1, tab2 = st.tabs(["🔐 Iniciar Sesión", "📝 Registro de Paciente"])
+        st.markdown("""
+        <style>
+        .login-header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+            animation: slideInDown 0.6s ease;
+        }
         
-        with tab1:
-            with st.form("login_form"):
-                st.subheader("Iniciar Sesión")
-                username = st.text_input("Usuario", placeholder="Ingrese su usuario")
-                password = st.text_input("Contraseña", type="password", placeholder="Ingrese su contraseña")
-                submit = st.form_submit_button("Ingresar", use_container_width=True)
-                
-                if submit:
-                    if login_user(username, password):
-                        st.success("✅ Inicio de sesión exitoso")
-                        st.rerun()
+        .login-header h1 {
+            font-size: 1.75rem;
+            color: #1E40AF;
+            margin: 0 0 0.5rem 0;
+            letter-spacing: -0.02em;
+        }
+        
+        .login-header p {
+            color: #6B7280;
+            margin: 0.25rem 0 0 0;
+            font-size: 0.95rem;
+        }
+        </style>
+        
+        <div class="login-header">
+            <h1>IHeartCare</h1>
+            <p>Sistema de Monitoreo Cardíaco</p>
+            <p style="font-size: 0.85rem; margin-top: 0.5rem; color: #9CA3AF;">Iniciar sesión</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Campos de entrada (sin formulario para evitar "press enter")
+        st.markdown("#### ")
+        username = st.text_input(
+            "Usuario",
+            value=saved.get("username", "") if saved.get("remember") else "",
+            placeholder="admin, doctor o paciente",
+            label_visibility="visible",
+            key="login_username"
+        )
+        
+        password = st.text_input(
+            "Contraseña",
+            type="password",
+            placeholder="Ingresa tu contraseña",
+            label_visibility="visible",
+            key="login_password"
+        )
+        
+        # Checkbox recordar
+        remember = st.checkbox(
+            "Recordar usuario",
+            value=saved.get("remember", False),
+            key="login_remember"
+        )
+        
+        # Botón de login
+        col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
+        with col_btn2:
+            if st.button("Iniciar sesión", use_container_width=True, type="primary"):
+                if login_user(username, password):
+                    # Guardar credenciales si se marcó recordar
+                    if remember:
+                        save_credentials(username, True)
                     else:
-                        st.error("❌ Usuario o contraseña incorrectos")
+                        save_credentials("", False)
+                    
+                    st.success("Sesión iniciada correctamente")
+                    import time
+                    time.sleep(0.8)
+                    st.rerun()
+                else:
+                    st.error("Credenciales incorrectas. Verifica usuario y contraseña.")
         
-        with tab2:
-            st.subheader("¿Eres nuevo paciente?")
-            st.info("Complete el formulario de registro para crear su cuenta de paciente.")
-            st.page_link("pages/7_registro_paciente.py", label="➡️ Ir al Formulario de Registro", icon="📋", use_container_width=True)
+        # Información de cuentas de prueba - usando componentes nativos
+        st.markdown("---")
+        st.markdown("#### Cuentas de prueba")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write("**Administrador**")
+            st.code("Usuario: admin\nContraseña: admin123", language="text")
+        
+        with col2:
+            st.write("**Doctor**")
+            st.code("Usuario: doctor\nContraseña: doctor123", language="text")
+        
+        st.write("**Paciente**")
+        st.code("Usuario: paciente\nContraseña: paciente123", language="text")
     
-    # Detener la ejecución aquí para que no se muestre nada más
     st.stop()
 
-# --- AHORA SÍ, SI ESTÁ AUTENTICADO, MOSTRAR SIDEBAR Y DASHBOARD ---
-with st.sidebar:
-    st.success(f"✅ Sesión activa: **{st.session_state.username}**")
-    st.info(f"🎭 Rol: **{st.session_state.rol.capitalize()}**")
-    
-    st.markdown("---")
-    st.subheader("📋 Navegación")
-    
-    # MENÚ SEGÚN ROL
-    if st.session_state.rol == 'administrador':
-        st.markdown("### 🔧 Gestión")
-        st.page_link("pages/1_ gestion_pacientes.py", label="👤 Gestión de Pacientes", icon="📝")
-        st.page_link("pages/2_ gestion_personal_medico.py", label="👨‍⚕️ Gestión de Personal Médico", icon="📝")
-        st.page_link("pages/3_gestion_dispositivos.py", label="⌚ Gestión de Dispositivos", icon="📝")
-        st.page_link("pages/4_gestion_monitoreo.py", label="🩺 Gestión de Monitoreo", icon="📝")
-        
-        st.markdown("### 📊 Visualización")
-        st.page_link("pages/5_dashboard_visualizacion.py", label="📊 Dashboard Visualización", icon="📈")
-        st.page_link("pages/6_panel_analisis_clinico.py", label="🔬 Panel Análisis Clínico", icon="🔬")
-    
-    elif st.session_state.rol == 'medico':
-        st.markdown("### 👨‍⚕️ Mis Pacientes")
-        st.page_link("pages/10_mis_pacientes.py", label="👥 Ver Mis Pacientes", icon="📋")
-        
-        st.markdown("### 📊 Análisis")
-        st.page_link("pages/5_dashboard_visualizacion.py", label="📊 Dashboard Visualización", icon="📈")
-        st.page_link("pages/6_panel_analisis_clinico.py", label="🔬 Panel Análisis Clínico", icon="🔬")
-    
-    elif st.session_state.rol == 'paciente':
-        st.markdown("### 👤 Mi Información")
-        st.page_link("pages/8_mi_perfil.py", label="📋 Mi Perfil", icon="👤")
-        st.page_link("pages/9_mis_mediciones.py", label="📊 Mis Mediciones", icon="📈")
-        st.page_link("pages/11_mis_alertas.py", label="⚠️ Mis Alertas", icon="🔔")
-    
-    st.markdown("---")
-    if st.button("🚪 Cerrar Sesión", use_container_width=True):
-        logout_user()
-        st.rerun()
+render_sidebar()
 
-# --- DASHBOARD SEGÚN ROL ---
-# Título de bienvenida
-st.title(f"🩺 Bienvenido, {st.session_state.username}")
-st.markdown("---")
+# --- CONTENEDOR DE PÁGINA CON ANIMACIÓN ---
+st.markdown('<div class="page-container">', unsafe_allow_html=True)
+
+breadcrumb_nav(["Home"])
 
 # ========== DASHBOARD ADMINISTRADOR ==========
 if st.session_state.rol == 'administrador':
-    st.header("🔧 Panel de Administrador")
-    st.success("✅ Tienes acceso completo a todas las funcionalidades del sistema.")
     
-    # Resumen de estadísticas
+    hero_section(
+        title="🛡️ Panel de Administración",
+        subtitle="Gestión completa del sistema de monitoreo cardíaco",
+        user_role=st.session_state.rol,
+        user_name=st.session_state.username,
+    )
+    
+    # Obtener métricas del sistema
     try:
-        from sqlalchemy import text
         conn = st.connection("postgresql", type="sql")
         with conn.session as s:
-            total_pacientes = s.execute(text("SELECT COUNT(*) FROM public.pacientes")).fetchone()[0]
-            total_medicos = s.execute(text("SELECT COUNT(*) FROM public.personal_medico")).fetchone()[0]
-            total_dispositivos = s.execute(text("SELECT COUNT(*) FROM public.dispositivos")).fetchone()[0]
-            monitoreos_activos = s.execute(text("SELECT COUNT(*) FROM public.monitoreos WHERE activo = true")).fetchone()[0]
-    except:
+            # Query para obtener todas las métricas
+            query_metrics = text("""
+                SELECT 
+                    (SELECT COUNT(*) FROM public.pacientes) as total_pacientes,
+                    (SELECT COUNT(*) FROM public.personal_medico) as total_medicos,
+                    (SELECT COUNT(*) FROM public.dispositivos WHERE activo = true) as dispositivos_activos,
+                    (SELECT COUNT(*) FROM public.monitoreos WHERE activo = true) as monitoreos_activos,
+                    (SELECT COUNT(*) FROM public.alertas WHERE leida = false) as alertas_pendientes,
+                    (SELECT COUNT(*) FROM public.mediciones WHERE timestamp > NOW() - INTERVAL '24 hours') as mediciones_hoy
+            """)
+            metrics = s.execute(query_metrics).fetchone()
+            
+            total_pacientes = metrics[0]
+            total_medicos = metrics[1]
+            dispositivos_activos = metrics[2]
+            monitoreos_activos = metrics[3]
+            alertas_pendientes = metrics[4]
+            mediciones_hoy = metrics[5]
+    
+    except Exception as e:
+        st.error(f"Error cargando métricas: {str(e)}")
         total_pacientes = 0
         total_medicos = 0
-        total_dispositivos = 0
+        dispositivos_activos = 0
         monitoreos_activos = 0
+        alertas_pendientes = 0
+        mediciones_hoy = 0
     
-    # Métricas principales
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric("👤 Pacientes", total_pacientes)
-    with col2:
-        st.metric("👨‍⚕️ Médicos", total_medicos)
-    with col3:
-        st.metric("⌚ Dispositivos", total_dispositivos)
-    with col4:
-        st.metric("🩺 Monitoreos Activos", monitoreos_activos)
+    # Cards de métricas principales
+    section_divider("📊 Resumen del Sistema")
     
-    st.markdown("---")
+    metrics_data = [
+        {
+            "title": "Pacientes Activos",
+            "value": total_pacientes,
+            "icon": "👥",
+            "color": "primary",
+            "subtitle": "Incorporados al sistema"
+        },
+        {
+            "title": "Personal Médico",
+            "value": total_medicos,
+            "icon": "👨‍⚕️",
+            "color": "info",
+            "subtitle": "Médicos registrados"
+        },
+        {
+            "title": "Dispositivos Activos",
+            "value": dispositivos_activos,
+            "icon": "📱",
+            "color": "success",
+            "subtitle": "Wearables conectados"
+        },
+        {
+            "title": "Monitoreos Activos",
+            "value": monitoreos_activos,
+            "icon": "⏱️",
+            "color": "warning",
+            "subtitle": "Monitoreos en curso"
+        },
+    ]
     
-    # Accesos rápidos
-    st.subheader("🚀 Accesos Rápidos")
+    metric_card_container(metrics_data, columns=4)
+    
+    # Alertas y eventos críticos
     col1, col2 = st.columns(2)
     
     with col1:
-        with st.container(border=True):
-            st.markdown("### 📝 Gestión de Datos")
-            st.page_link("pages/1_ gestion_pacientes.py", label="Gestión de Pacientes", icon="👤")
-            st.page_link("pages/2_ gestion_personal_medico.py", label="Gestión de Personal Médico", icon="👨‍⚕️")
-            st.page_link("pages/3_gestion_dispositivos.py", label="Gestión de Dispositivos", icon="⌚")
-            st.page_link("pages/4_gestion_monitoreo.py", label="Gestión de Monitoreo", icon="🩺")
+        st.markdown("""
+        <div style='
+            background: linear-gradient(135deg, #DC354520 0%, #DC354510 100%);
+            border: 1px solid #DC354540;
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+        '>
+            <div style='font-size: 2rem; margin-bottom: 0.5rem;'>🚨</div>
+            <div style='font-size: 2rem; font-weight: 700; color: #DC3545;'>{}</div>
+            <div style='color: #6B7280; margin-top: 0.5rem;'>Alertas Pendientes</div>
+        </div>
+        """.format(alertas_pendientes), unsafe_allow_html=True)
     
     with col2:
-        with st.container(border=True):
-            st.markdown("### 📊 Análisis y Reportes")
-            st.page_link("pages/5_dashboard_visualizacion.py", label="Dashboard de Visualización", icon="📈")
-            st.page_link("pages/6_panel_analisis_clinico.py", label="Panel de Análisis Clínico", icon="🔬")
+        st.markdown("""
+        <div style='
+            background: linear-gradient(135deg, #28A74520 0%, #28A74510 100%);
+            border: 1px solid #28A74540;
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+        '>
+            <div style='font-size: 2rem; margin-bottom: 0.5rem;'>📈</div>
+            <div style='font-size: 2rem; font-weight: 700; color: #28A745;'>{}</div>
+            <div style='color: #6B7280; margin-top: 0.5rem;'>Mediciones (24h)</div>
+        </div>
+        """.format(mediciones_hoy), unsafe_allow_html=True)
+    
+    # Sección de accesos rápidos
+    section_divider("⚙️ Gestión del Sistema")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("### 📋 Administración de Datos")
+        
+        cols = st.columns(2)
+        with cols[0]:
+            st.page_link(
+                "pages/01_admin_pacientes.py",
+                label="👥 Pacientes",
+                icon="📌"
+            )
+            st.page_link(
+                "pages/02_admin_medicos.py",
+                label="👨‍⚕️ Personal Médico",
+                icon="📌"
+            )
+        
+        with cols[1]:
+            st.page_link(
+                "pages/03_admin_dispositivos.py",
+                label="📱 Dispositivos",
+                icon="📌"
+            )
+            st.page_link(
+                "pages/04_monitoreo_crear.py",
+                label="⏱️ Monitoreos",
+                icon="📌"
+            )
+    
+    with col2:
+        st.markdown("### 📊 Análisis y Herramientas")
+        
+        cols = st.columns(2)
+        with cols[0]:
+            st.page_link(
+                "pages/05_monitoreo_dashboard.py",
+                label="📈 Dashboard Vivo",
+                icon="📌"
+            )
+            st.page_link(
+                "pages/06_monitoreo_analisis.py",
+                label="🔬 Análisis Clínico",
+                icon="📌"
+            )
+    
+    # Últimas alertas críticas
+    section_divider("🔔 Alertas Recientes")
+    
+    try:
+        conn = st.connection("postgresql", type="sql")
+        with conn.session as s:
+            query_alertas = text("""
+                SELECT a.id, a.tipo_alerta, a.mensaje, a.timestamp,
+                       p.nombre, p.apellido_paterno,
+                       m.tipo_medicion, m.valor
+                FROM public.alertas a
+                JOIN public.mediciones m ON a.medicion_id = m.id
+                JOIN public.dispositivos d ON m.dispositivo_id = d.id
+                JOIN public.pacientes p ON d.paciente_id = p.id
+                WHERE a.leida = false
+                ORDER BY a.timestamp DESC
+                LIMIT 5
+            """)
+            alertas_criticas = s.execute(query_alertas).fetchall()
+        
+        if alertas_criticas:
+            for alerta in alertas_criticas:
+                color = "#DC3545" if alerta[1] == "crítica" else "#FF9800"
+                icon = "🚨" if alerta[1] == "crítica" else "⚠️"
+                
+                with st.container(border=True):
+                    col1, col2 = st.columns([0.1, 0.9])
+                    with col1:
+                        st.markdown(f"<div style='font-size: 1.5rem;'>{icon}</div>", unsafe_allow_html=True)
+                    with col2:
+                        st.markdown(f"**{alerta[4]} {alerta[5]}**")
+                        st.markdown(f"_{alerta[2]}_")
+                        st.caption(f"📊 {alerta[6]}: {alerta[7]} | {alerta[3].strftime('%d/%m %H:%M')}")
+        else:
+            st.info("✅ No hay alertas pendientes")
+    
+    except Exception as e:
+        st.warning(f"No se pudieron cargar las alertas: {str(e)}")
 
 # ========== DASHBOARD MÉDICO ==========
 elif st.session_state.rol == 'medico':
-    st.header("👨‍⚕️ Panel del Médico")
-    st.info("Accede a la información de tus pacientes asignados.")
     
-    # Estadísticas del médico
+    hero_section(
+        title="👨‍⚕️ Panel del Médico",
+        subtitle="Monitoreo de tus pacientes asignados",
+        user_role=st.session_state.rol,
+        user_name=st.session_state.username,
+    )
+    
+    # Métricas del médico
     try:
-        from sqlalchemy import text
-        conn = st.connection("postgresql", type="sql")
-        with conn.session as s:
-            query_pacientes = text("""
-                SELECT COUNT(*) 
-                FROM public.pacientes_medicos 
-                WHERE medico_id = :medico_id
-            """)
-            total_pacientes = s.execute(query_pacientes, {"medico_id": st.session_state.medico_id}).fetchone()[0]
-            
-            query_monitoreos = text("""
-                SELECT COUNT(DISTINCT m.id)
-                FROM public.monitoreos m
-                INNER JOIN public.pacientes_medicos pm ON m.paciente_id = pm.paciente_id
-                WHERE pm.medico_id = :medico_id AND m.activo = true
-            """)
-            monitoreos_activos = s.execute(query_monitoreos, {"medico_id": st.session_state.medico_id}).fetchone()[0]
-            
-            query_alertas = text("""
-                SELECT COUNT(DISTINCT a.id)
-                FROM public.alertas a
-                INNER JOIN public.mediciones med ON a.medicion_id = med.id
-                INNER JOIN public.dispositivos d ON med.dispositivo_id = d.id
-                INNER JOIN public.pacientes_medicos pm ON d.paciente_id = pm.paciente_id
-                WHERE pm.medico_id = :medico_id AND a.leida = false
-            """)
-            alertas_pendientes = s.execute(query_alertas, {"medico_id": st.session_state.medico_id}).fetchone()[0]
-    except:
-        total_pacientes = 0
-        monitoreos_activos = 0
-        alertas_pendientes = 0
-    
-    # Métricas
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("👥 Mis Pacientes", total_pacientes)
-    with col2:
-        st.metric("🩺 Monitoreos Activos", monitoreos_activos)
-    with col3:
-        st.metric("⚠️ Alertas Pendientes", alertas_pendientes)
-    
-    st.markdown("---")
-    
-    # Accesos rápidos
-    col1, col2 = st.columns(2)
-    with col1:
-        with st.container(border=True):
-            st.markdown("### 👥 Mis Pacientes")
-            st.page_link("pages/10_mis_pacientes.py", label="Ver Lista de Pacientes", icon="📋")
-            st.caption("Revisa el estado de salud de tus pacientes asignados")
-    
-    with col2:
-        with st.container(border=True):
-            st.markdown("### 📊 Herramientas de Análisis")
-            st.page_link("pages/5_dashboard_visualizacion.py", label="Dashboard de Visualización", icon="📈")
-            st.page_link("pages/6_panel_analisis_clinico.py", label="Panel de Análisis Clínico", icon="🔬")
-
-# ========== DASHBOARD PACIENTE ==========
-elif st.session_state.rol == 'paciente':
-    st.header("👤 Panel del Paciente")
-    st.info("Visualiza tu información médica y monitoreo en tiempo real.")
-    
-    # Información del paciente
-    try:
-        from sqlalchemy import text
         conn = st.connection("postgresql", type="sql")
         with conn.session as s:
             query = text("""
                 SELECT 
-                    p.nombre, p.apellido_paterno,
-                    d.modelo as dispositivo,
-                    m.activo as monitoreo_activo,
-                    (SELECT COUNT(*) FROM public.alertas a 
-                     INNER JOIN public.mediciones med ON a.medicion_id = med.id
-                     INNER JOIN public.dispositivos disp ON med.dispositivo_id = disp.id
+                    (SELECT COUNT(*) FROM public.pacientes_medicos WHERE medico_id = :medico_id) as mis_pacientes,
+                    (SELECT COUNT(*) FROM public.monitoreos m
+                     JOIN public.pacientes_medicos pm ON m.paciente_id = pm.paciente_id
+                     WHERE pm.medico_id = :medico_id AND m.activo = true) as monitoreos_activos,
+                    (SELECT COUNT(*) FROM public.alertas a
+                     JOIN public.mediciones med ON a.medicion_id = med.id
+                     JOIN public.dispositivos d ON med.dispositivo_id = d.id
+                     JOIN public.pacientes_medicos pm ON d.paciente_id = pm.paciente_id
+                     WHERE pm.medico_id = :medico_id AND a.leida = false) as alertas_pendientes
+            """)
+            resultado = s.execute(query, {"medico_id": st.session_state.medico_id}).fetchone()
+            
+            mis_pacientes = resultado[0]
+            monitoreos_activos = resultado[1]
+            alertas_pendientes = resultado[2]
+    
+    except:
+        mis_pacientes = 0
+        monitoreos_activos = 0
+        alertas_pendientes = 0
+    
+    # Cards de métricas
+    section_divider("📊 Mis Estadísticas")
+    
+    metrics_data = [
+        {
+            "title": "Pacientes Asignados",
+            "value": mis_pacientes,
+            "icon": "👥",
+            "color": "primary",
+            "subtitle": "Bajo mi cuidado"
+        },
+        {
+            "title": "Monitoreos Activos",
+            "value": monitoreos_activos,
+            "icon": "⏱️",
+            "color": "warning",
+            "subtitle": "En tiempo real"
+        },
+        {
+            "title": "Alertas Pendientes",
+            "value": alertas_pendientes,
+            "icon": "🚨",
+            "color": "danger",
+            "subtitle": "Requieren atención"
+        },
+    ]
+    
+    metric_card_container(metrics_data, columns=3)
+    
+    # Accesos rápidos
+    section_divider("⚙️ Herramientas")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.page_link(
+            "pages/09_mis_pacientes.py",
+            label="👥 Ver Mis Pacientes",
+            icon="📌"
+        )
+        st.page_link(
+            "pages/05_monitoreo_dashboard.py",
+            label="📈 Dashboard de Visualización",
+            icon="📌"
+        )
+    
+    with col2:
+        st.page_link(
+            "pages/06_monitoreo_analisis.py",
+            label="🔬 Panel de Análisis Clínico",
+            icon="📌"
+        )
+        st.page_link(
+            "pages/10_notificaciones.py",
+            label="🔔 Ver Mis Alertas",
+            icon="📌"
+        )
+
+# ========== DASHBOARD PACIENTE ==========
+elif st.session_state.rol == 'paciente':
+    
+    hero_section(
+        title="👤 Mi Panel de Salud",
+        subtitle="Monitorea tu información médica en tiempo real",
+        user_role=st.session_state.rol,
+        user_name=st.session_state.username,
+    )
+    
+    # Información del paciente
+    try:
+        conn = st.connection("postgresql", type="sql")
+        with conn.session as s:
+            query = text("""
+                SELECT 
+                    p.nombre, p.apellido_paterno, p.diagnostico,
+                    d.modelo, d.activo,
+                    (SELECT COUNT(*) FROM public.alertas a
+                     JOIN public.mediciones med ON a.medicion_id = med.id
+                     JOIN public.dispositivos disp ON med.dispositivo_id = disp.id
                      WHERE disp.paciente_id = p.id AND a.leida = false) as alertas_pendientes,
-                    CONCAT(pm.nombre, ' ', pm.apellido_paterno) as medico
+                    COUNT(DISTINCT pm.medico_id) as total_medicos,
+                    COUNT(DISTINCT med.id) as total_mediciones
                 FROM public.pacientes p
-                LEFT JOIN public.dispositivos d ON d.paciente_id = p.id
-                LEFT JOIN public.monitoreos m ON m.paciente_id = p.id AND m.activo = true
-                LEFT JOIN public.pacientes_medicos rel ON rel.paciente_id = p.id
-                LEFT JOIN public.personal_medico pm ON pm.id = rel.medico_id
+                LEFT JOIN public.dispositivos d ON d.paciente_id = p.id AND d.activo = true
+                LEFT JOIN public.pacientes_medicos pm ON p.id = pm.paciente_id
+                LEFT JOIN public.mediciones med ON d.id = med.dispositivo_id
                 WHERE p.id = :paciente_id
+                GROUP BY p.id, d.id
                 LIMIT 1
             """)
             datos = s.execute(query, {"paciente_id": st.session_state.paciente_id}).fetchone()
+    
     except:
         datos = None
     
     if datos:
-        # Métricas
-        col1, col2, col3 = st.columns(3)
+        # Métricas del paciente
+        section_divider("📊 Mi Estado Actual")
+        
+        metrics_data = [
+            {
+                "title": "Estado del Dispositivo",
+                "value": "Activo ✓" if datos[4] else "Inactivo",
+                "icon": "📱",
+                "color": "success" if datos[4] else "danger",
+            },
+            {
+                "title": "Alertas Pendientes",
+                "value": datos[5],
+                "icon": "🚨",
+                "color": "warning",
+            },
+            {
+                "title": "Médicos Asignados",
+                "value": datos[6],
+                "icon": "👨‍⚕️",
+                "color": "info",
+            },
+            {
+                "title": "Total de Mediciones",
+                "value": datos[7],
+                "icon": "📈",
+                "color": "primary",
+            },
+        ]
+        
+        metric_card_container(metrics_data, columns=4)
+        
+        # Información clínica
+        section_divider("🏥 Mi Información Clínica")
+        
+        col1, col2 = st.columns(2)
+        
         with col1:
-            estado = "🟢 Activo" if datos.monitoreo_activo else "🔴 Inactivo"
-            st.metric("Estado de Monitoreo", estado)
+            st.markdown(f"""
+            <div style='
+                background: #E8F4FF;
+                border-radius: 12px;
+                padding: 1.5rem;
+            '>
+                <h3 style='margin-top: 0;'>Diagnóstico</h3>
+                <p style='font-size: 1.1rem; color: #0B3D5C; margin: 0;'>
+                    {datos[2] if datos[2] else 'No especificado'}
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+        
         with col2:
-            dispositivo = datos.dispositivo if datos.dispositivo else "Sin asignar"
-            st.metric("⌚ Dispositivo", dispositivo)
-        with col3:
-            st.metric("⚠️ Alertas Pendientes", datos.alertas_pendientes or 0)
-        
-        st.markdown("---")
-        
-        # Información del médico
-        if datos.medico:
-            st.success(f"👨‍⚕️ **Tu médico asignado:** Dr(a). {datos.medico}")
-        else:
-            st.warning("⚠️ Aún no tienes un médico asignado")
+            st.markdown(f"""
+            <div style='
+                background: #F0FDF4;
+                border-radius: 12px;
+                padding: 1.5rem;
+            '>
+                <h3 style='margin-top: 0;'>Dispositivo</h3>
+                <p style='font-size: 1.1rem; color: #065F46; margin: 0;'>
+                    {datos[3] if datos[3] else 'No asignado'}
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
     
-    st.markdown("---")
+    # Accesos rápidos personalizados
+    section_divider("⚙️ Mi Información")
     
-    # Accesos rápidos
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
+    
     with col1:
-        with st.container(border=True):
-            st.markdown("### 📋 Mi Información")
-            st.page_link("pages/8_mi_perfil.py", label="Ver Mi Perfil Completo", icon="👤")
-            st.caption("Revisa tus datos personales y de contacto")
+        st.page_link(
+            "pages/07_perfil_usuario.py",
+            label="👤 Mi Perfil",
+            icon="📌"
+        )
     
     with col2:
-        with st.container(border=True):
-            st.markdown("### 📊 Mis Datos de Salud")
-            st.page_link("pages/9_mis_mediciones.py", label="Ver Mis Mediciones", icon="📈")
-            st.page_link("pages/11_mis_alertas.py", label="Ver Mis Alertas", icon="⚠️")
+        st.page_link(
+            "pages/08_mediciones_personales.py",
+            label="📈 Mis Mediciones",
+            icon="📌"
+        )
+    
+    with col3:
+        st.page_link(
+            "pages/10_notificaciones.py",
+            label="🔔 Mis Alertas",
+            icon="📌"
+        )
+
+st.markdown('</div>', unsafe_allow_html=True)

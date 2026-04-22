@@ -3,11 +3,15 @@ import pandas as pd
 import altair as alt
 from sqlalchemy import text
 from auth import require_auth
+from sidebar import render_sidebar
+from theme import apply_global_theme
 
 require_auth(allowed_roles=['paciente'])
+render_sidebar()
+apply_global_theme()
 
-st.set_page_config(page_title="Mis Mediciones", page_icon="📊", layout="wide")
-st.title("📊 Mis Mediciones Biométricas")
+st.set_page_config(page_title="Mis Mediciones", page_icon=None, layout="wide")
+st.title("Mis Mediciones Biométricas")
 st.markdown("---")
 
 try:
@@ -25,7 +29,7 @@ try:
         df = pd.read_sql(query, s.connection(), params={"paciente_id": st.session_state.paciente_id})
     
     if df.empty:
-        st.info("📭 Aún no tienes mediciones registradas")
+        st.info("Aún no tienes mediciones registradas")
     else:
         # Filtros
         col1, col2 = st.columns(2)
@@ -47,7 +51,7 @@ try:
         st.altair_chart(chart, use_container_width=True)
         
         # Tabla de últimas mediciones
-        st.subheader("📋 Últimas 10 Mediciones")
+        st.subheader("Últimas 10 Mediciones")
         st.dataframe(df_filtrado.head(10), use_container_width=True)
         
 except Exception as e:

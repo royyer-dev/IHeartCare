@@ -1,11 +1,15 @@
 import streamlit as st
 from sqlalchemy import text
 from auth import require_auth
+from sidebar import render_sidebar
+from theme import apply_global_theme
 
 require_auth(allowed_roles=['paciente'])
+render_sidebar()
 
-st.set_page_config(page_title="Mi Perfil", page_icon="👤", layout="wide")
-st.title("👤 Mi Perfil Médico")
+st.set_page_config(page_title="Mi Perfil", page_icon=None, layout="wide")
+apply_global_theme()
+st.title("Mi Perfil Médico")
 st.markdown("---")
 
 try:
@@ -26,7 +30,7 @@ try:
             col1, col2 = st.columns(2)
             with col1:
                 with st.container(border=True):
-                    st.subheader("📋 Información Personal")
+                    st.subheader("Información Personal")
                     st.write(f"**Nombre:** {datos.nombre} {datos.apellido_paterno} {datos.apellido_materno}")
                     st.write(f"**CURP:** {datos.curp}")
                     st.write(f"**Fecha de Nacimiento:** {datos.fecha_nacimiento}")
@@ -36,7 +40,7 @@ try:
             
             with col2:
                 with st.container(border=True):
-                    st.subheader("⌚ Dispositivo Asignado")
+                    st.subheader("Dispositivo Asignado")
                     if datos.modelo:
                         st.write(f"**Modelo:** {datos.modelo}")
                         st.write(f"**MAC Address:** {datos.mac_address}")
@@ -44,7 +48,7 @@ try:
                         st.info("No tienes dispositivo asignado")
                 
                 with st.container(border=True):
-                    st.subheader("👨‍⚕️ Médico Asignado")
+                    st.subheader("Médico Asignado")
                     if datos.medico_asignado:
                         st.write(f"**Dr(a). {datos.medico_asignado}**")
                     else:
