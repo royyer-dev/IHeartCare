@@ -1,5 +1,5 @@
 import streamlit as st
-from auth import logout_user
+from core.auth import logout_user
 from utils import mostrar_indicador_notificaciones, obtener_estadisticas_notificaciones
 
 def render_sidebar():

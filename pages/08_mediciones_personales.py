@@ -2,15 +2,15 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 from sqlalchemy import text
-from auth import require_auth
-from sidebar import render_sidebar
-from theme import apply_global_theme
+from core.auth import require_auth
+from core.sidebar import render_sidebar
+from core.theme import apply_global_theme
+
+st.set_page_config(page_title="Mis Mediciones", page_icon=None, layout="wide")
 
 require_auth(allowed_roles=['paciente'])
 render_sidebar()
 apply_global_theme()
-
-st.set_page_config(page_title="Mis Mediciones", page_icon=None, layout="wide")
 st.title("Mis Mediciones Biométricas")
 st.markdown("---")
 

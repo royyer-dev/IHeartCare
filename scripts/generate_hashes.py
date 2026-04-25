@@ -8,7 +8,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 try:
-    from auth import hash_password
+    from core.auth import hash_password
     
     # Generar hashes
     passwords = {

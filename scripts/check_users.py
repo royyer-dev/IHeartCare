@@ -1,9 +1,13 @@
-"""Script para verificar y crear usuarios de prueba"""
+"""Script para verificar y crear usuarios de prueba
 
+Uso: python scripts/check_users.py  (desde la raíz del proyecto)
+"""
+
+import os
 from sqlalchemy import create_engine, text
 import bcrypt
 
-DB_URL = 'postgresql://postgres:312245cesar@localhost:5433/IHeartCareDB'
+DB_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:312245cesar@localhost:5433/IHeartCareDB")
 
 def hash_password(password: str) -> str:
     """Encripta una contraseña usando bcrypt."""

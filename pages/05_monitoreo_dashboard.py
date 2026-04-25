@@ -4,9 +4,9 @@ import time
 from datetime import datetime
 from sqlalchemy import text
 
-from auth import require_auth
-from sidebar import render_sidebar
-from theme import apply_global_theme
+from core.auth import require_auth
+from core.sidebar import render_sidebar
+from core.theme import apply_global_theme
 from utils import breadcrumb_nav
 
 # --- PROTECCIÓN DE RUTA ---

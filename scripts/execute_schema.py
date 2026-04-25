@@ -1,10 +1,18 @@
 """
 Script para ejecutar schema.sql en la base de datos usando SQLAlchemy
+
+Uso: python scripts/execute_schema.py  (desde la raíz del proyecto)
 """
+import os
+from pathlib import Path
 from sqlalchemy import create_engine, text
 
-# Credenciales de la base de datos
-DB_URL = "postgresql://postgres:312245cesar@localhost:5433/IHeartCareDB"
+# Credenciales de la base de datos (usar variable de entorno o fallback)
+DB_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:312245cesar@localhost:5433/IHeartCareDB")
+
+# Ruta al schema.sql relativa al proyecto
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+SCHEMA_PATH = PROJECT_ROOT / "db" / "schema.sql"
 
 def execute_schema():
     """Ejecuta el archivo schema.sql en la base de datos"""
@@ -13,7 +21,7 @@ def execute_schema():
         engine = create_engine(DB_URL)
         
         # Leer el archivo schema.sql
-        with open('schema.sql', 'r', encoding='utf-8') as f:
+        with open(SCHEMA_PATH, 'r', encoding='utf-8') as f:
             schema_content = f.read()
         
         # Ejecutar el schema

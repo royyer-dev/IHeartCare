@@ -1,12 +1,18 @@
 """
 Script para inicializar usuarios de prueba en el sistema I-HeartCare
 Ejecutar una sola vez para crear usuarios de prueba para cada rol.
+
+Uso: streamlit run scripts/init_users.py  (desde la raíz del proyecto)
 """
+
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import streamlit as st
 from sqlalchemy import text
-from auth import hash_password
-from generate_demo_data import generate_demo_data
+from core.auth import hash_password
+from scripts.generate_demo_data import generate_demo_data
 
 def init_test_users():
     """Crea usuarios de prueba para cada rol del sistema."""

@@ -1,9 +1,9 @@
 
 import streamlit as st
 from sqlalchemy import text
-from auth import login_user, logout_user
-from theme import apply_global_theme
-from sidebar import render_sidebar
+from core.auth import login_user, logout_user
+from core.theme import apply_global_theme
+from core.sidebar import render_sidebar
 from utils import (
     breadcrumb_nav,
     hero_section,

@@ -27,7 +27,7 @@ from .alerta_generator import (
 )
 
 from .simulador import (
-    generar_medicon_anomala,
+    generar_medicion_anomala,
     simular_evento_continuo,
     obtener_dispositivos_pacientes,
     obtener_ultimas_mediciones_paciente,

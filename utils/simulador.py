@@ -70,7 +70,7 @@ TIPOS_EVENTOS = {
 }
 
 
-def generar_medicon_anomala(
+def generar_medicion_anomala(
     dispositivo_id: int,
     tipo_evento: str,
     intensidad: str = "moderada",
@@ -198,7 +198,7 @@ def simular_evento_continuo(
                 break
             
             # Generar medición
-            generar_medicon_anomala(
+            generar_medicion_anomala(
                 dispositivo_id,
                 tipo_evento,
                 intensidad="moderada",

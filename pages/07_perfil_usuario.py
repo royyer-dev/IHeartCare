@@ -1,13 +1,13 @@
 import streamlit as st
 from sqlalchemy import text
-from auth import require_auth
-from sidebar import render_sidebar
-from theme import apply_global_theme
+from core.auth import require_auth
+from core.sidebar import render_sidebar
+from core.theme import apply_global_theme
+
+st.set_page_config(page_title="Mi Perfil", page_icon=None, layout="wide")
 
 require_auth(allowed_roles=['paciente'])
 render_sidebar()
-
-st.set_page_config(page_title="Mi Perfil", page_icon=None, layout="wide")
 apply_global_theme()
 st.title("Mi Perfil Médico")
 st.markdown("---")
