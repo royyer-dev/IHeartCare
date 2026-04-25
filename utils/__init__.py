@@ -46,20 +46,6 @@ from .notificaciones import (
     mostrar_indicador_notificaciones,
 )
 
-from .geo_simulator import (
-    generar_coordenadas_base,
-    generar_coordenadas_actuales,
-    validar_coordenadas,
-    calcular_distancia_haversine,
-)
-
-from .mapas import (
-    crear_mapa_dispositivos,
-    crear_minimapa,
-    generar_popup_dispositivo,
-    crear_mapa_clustered,
-)
-
 __all__ = [
     # UI Components
     'breadcrumb_nav',
@@ -82,7 +68,7 @@ __all__ = [
     'marcar_alerta_leida',
     'marcar_alertas_leidas_paciente',
     # Simulador
-    'generar_medicon_anomala',
+    'generar_medicion_anomala',
     'simular_evento_continuo',
     'obtener_dispositivos_pacientes',
     'obtener_ultimas_mediciones_paciente',
@@ -97,14 +83,4 @@ __all__ = [
     'contar_notificaciones_pendientes',
     'mostrar_panel_notificaciones',
     'mostrar_indicador_notificaciones',
-    # Geo Simulator
-    'generar_coordenadas_base',
-    'generar_coordenadas_actuales',
-    'validar_coordenadas',
-    'calcular_distancia_haversine',
-    # Mapas
-    'crear_mapa_dispositivos',
-    'crear_minimapa',
-    'generar_popup_dispositivo',
-    'crear_mapa_clustered',
 ]

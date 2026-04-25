@@ -12,7 +12,6 @@ Sistema web de monitoreo cardíaco en tiempo real construido con **Streamlit**, 
 | **CRUD Completo** | Gestión de pacientes, médicos y dispositivos (crear, leer, editar, eliminar) |
 | **Monitoreo en Vivo** | Dashboard con auto-refresh configurable (5/10/15/30s) |
 | **Análisis Clínico** | Gráficas Plotly, mapas de calor, estadísticas avanzadas |
-| **Geolocalización** | Mapas interactivos con Folium + simulador GPS |
 | **Notificaciones** | Alertas automáticas por mediciones anormales |
 | **Simulador** | Generador de eventos médicos en tiempo real |
 
@@ -107,9 +106,7 @@ IHeartCare/
 │   ├── ui_components.py       # Componentes UI reutilizables
 │   ├── alerta_generator.py    # Generador de alertas
 │   ├── simulador.py           # Simulador de eventos
-│   ├── notificaciones.py      # Sistema de notificaciones
-│   ├── geo_simulator.py       # Simulador GPS
-│   └── mapas.py               # Mapas interactivos (Folium)
+│   └── notificaciones.py      # Sistema de notificaciones
 │
 ├── db/                        # Base de datos
 │   ├── schema.sql             # Schema completo
@@ -155,7 +152,7 @@ IHeartCare/
 
 - **Python** 3.8+
 - **PostgreSQL** 10+
-- Dependencias: `streamlit`, `sqlalchemy`, `psycopg2-binary`, `bcrypt`, `pandas`, `plotly`, `folium`, `streamlit-folium`, `geopy`
+- Dependencias: `streamlit`, `sqlalchemy`, `psycopg2-binary`, `bcrypt`, `pandas`, `plotly`
 
 ---
 
@@ -165,5 +162,4 @@ IHeartCare/
 |-------|----------|
 | `ModuleNotFoundError` | Ejecutar `pip install -r requirements.txt` |
 | `Connection refused` | Verificar que PostgreSQL esté corriendo y las credenciales en `secrets.toml` |
-| Mapa no aparece | Verificar que haya dispositivos activos con coordenadas en la BD |
 | Login no funciona | Ejecutar `streamlit run scripts/init_users.py` para crear usuarios |

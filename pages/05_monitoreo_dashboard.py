@@ -91,8 +91,6 @@ try:
                 d.id as dispositivo_id,
                 d.modelo,
                 d.mac_address,
-                d.latitude,
-                d.longitude,
                 d.activo as dispositivo_activo
             FROM public.monitoreos m
             JOIN public.pacientes p ON m.paciente_id = p.id
@@ -120,8 +118,6 @@ try:
                 d.id as dispositivo_id,
                 d.modelo,
                 d.mac_address,
-                d.latitude,
-                d.longitude,
                 d.activo as dispositivo_activo
             FROM public.monitoreos m
             JOIN public.pacientes p ON m.paciente_id = p.id

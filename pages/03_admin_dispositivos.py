@@ -366,7 +366,7 @@ with tab_editar:
             try:
                 with conn.session as s:
                     query = text("""
-                        SELECT id, modelo, mac_address, paciente_id, latitude, longitude, direccion_url
+                        SELECT id, modelo, mac_address, paciente_id
                         FROM public.dispositivos
                         WHERE id = :did
                     """)
@@ -378,9 +378,6 @@ with tab_editar:
                         'modelo': resultado[1],
                         'mac_address': resultado[2],
                         'paciente_id': resultado[3],
-                        'latitude': resultado[4],
-                        'longitude': resultado[5],
-                        'direccion_url': resultado[6]
                     }
                     
                     st.markdown("---")
@@ -413,34 +410,17 @@ with tab_editar:
                                 st.markdown("**Información del Dispositivo**")
                                 modelo_edit = st.text_input("Modelo", value=dispositivo_data['modelo'])
                                 mac_edit = st.text_input("Dirección MAC", value=dispositivo_data['mac_address'] or "")
-                                direccion_url_edit = st.text_input("URL de Dirección", value=dispositivo_data['direccion_url'] or "")
                             
                             with col2:
-                                st.markdown("**Ubicación Geográfica**")
-                                lat_edit = st.number_input(
-                                    "Latitud",
-                                    value=float(dispositivo_data['latitude']) if dispositivo_data['latitude'] else 0.0,
-                                    format="%.8f",
-                                    min_value=-90.0,
-                                    max_value=90.0
-                                )
-                                lon_edit = st.number_input(
-                                    "Longitud",
-                                    value=float(dispositivo_data['longitude']) if dispositivo_data['longitude'] else 0.0,
-                                    format="%.8f",
-                                    min_value=-180.0,
-                                    max_value=180.0
-                                )
-                            
-                            st.markdown("**Paciente Asignado**")
-                            if not pacientes.empty:
-                                pacientes['label'] = pacientes['nombre'] + ' ' + pacientes['apellido_paterno']
-                                paciente_edit = st.selectbox(
-                                    "Selecciona paciente",
-                                    options=pacientes['id'].tolist() + [None],
-                                    format_func=lambda x: (pacientes[pacientes['id'] == x]['label'].values[0] if x is not None else "Sin asignar"),
-                                    index=list(pacientes['id']).index(dispositivo_data['paciente_id']) if dispositivo_data['paciente_id'] in pacientes['id'].values else len(pacientes)
-                                )
+                                st.markdown("**Paciente Asignado**")
+                                if not pacientes.empty:
+                                    pacientes['label'] = pacientes['nombre'] + ' ' + pacientes['apellido_paterno']
+                                    paciente_edit = st.selectbox(
+                                        "Selecciona paciente",
+                                        options=pacientes['id'].tolist() + [None],
+                                        format_func=lambda x: (pacientes[pacientes['id'] == x]['label'].values[0] if x is not None else "Sin asignar"),
+                                        index=list(pacientes['id']).index(dispositivo_data['paciente_id']) if dispositivo_data['paciente_id'] in pacientes['id'].values else len(pacientes)
+                                    )
                             
                             col_submit, col_cancel = st.columns(2)
                             with col_submit:
@@ -457,18 +437,12 @@ with tab_editar:
                                             UPDATE public.dispositivos
                                             SET modelo = :modelo,
                                                 mac_address = :mac,
-                                                latitude = :lat,
-                                                longitude = :lon,
-                                                direccion_url = :url,
                                                 paciente_id = :paciente_id
                                             WHERE id = :did
                                         """)
                                         s.execute(query, params={
                                             'modelo': modelo_edit,
                                             'mac': mac_edit if mac_edit else None,
-                                            'lat': lat_edit if lat_edit != 0.0 else None,
-                                            'lon': lon_edit if lon_edit != 0.0 else None,
-                                            'url': direccion_url_edit if direccion_url_edit else None,
                                             'paciente_id': paciente_edit,
                                             'did': dispositivo_seleccionado
                                         })
