@@ -17,38 +17,28 @@ def render_sidebar():
         stats_notificaciones = obtener_estadisticas_notificaciones(st.session_state.user_id)
         
         # Header con información del usuario
-        st.markdown("#### IHeartCare")
-        
-        # Rol badge - Minimalista y profesional
-        rol_texto = st.session_state.rol.upper()
-        rol_map = {
-            'ADMINISTRADOR': '#1E40AF',
-            'MEDICO': '#0891B2',
-            'PACIENTE': '#10B981'
-        }
-        color_rol = rol_map.get(rol_texto, '#1E40AF')
-        
-        st.markdown(f"""
-        <div style="
-            background: {color_rol}22;
-            border-left: 3px solid {color_rol};
-            color: #1F2937;
-            padding: 0.75rem;
-            border-radius: 0.375rem;
-            text-align: center;
-            font-weight: 500;
-            font-size: 0.9rem;
-            margin: 0.75rem 0;
-        ">
-            {rol_texto}
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.divider()
-        
-        # ========== VISTA RÁPIDA DE NOTIFICACIONES ==========
         st.markdown("""
         <style>
+        .sidebar-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #111827;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.25rem;
+        }
+        
+        .sidebar-section {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #6B7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 1.25rem;
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.25rem;
+            border-bottom: 1px solid #E5E7EB;
+        }
+        
         .notification-stats {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -110,8 +100,37 @@ def render_sidebar():
         </style>
         """, unsafe_allow_html=True)
         
+        st.markdown('<div class="sidebar-title">IHeartCare</div>', unsafe_allow_html=True)
+        
+        # Rol badge - Minimalista y profesional
+        rol_texto = st.session_state.rol.upper()
+        rol_map = {
+            'ADMINISTRADOR': '#1E40AF',
+            'MEDICO': '#0891B2',
+            'PACIENTE': '#10B981'
+        }
+        color_rol = rol_map.get(rol_texto, '#1E40AF')
+        
+        st.markdown(f"""
+        <div style="
+            background: {color_rol}22;
+            border-left: 3px solid {color_rol};
+            color: #1F2937;
+            padding: 0.6rem 0.75rem;
+            border-radius: 0.375rem;
+            font-weight: 600;
+            font-size: 0.8rem;
+            letter-spacing: 0.03em;
+            margin: 0.5rem 0;
+        ">
+            {rol_texto}
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.divider()
+        
+        # ========== NOTIFICACIONES ==========
         with st.expander("Notificaciones", expanded=False):
-            # Estadísticas
             st.markdown(f"""
             <div class="notification-stats">
                 <div class="notification-stat unread">
@@ -128,7 +147,6 @@ def render_sidebar():
             st.caption(f"Total: {stats_notificaciones['total']}")
             st.divider()
             
-            # Últimas 3 notificaciones sin leer
             if stats_notificaciones['ultimas_3']:
                 st.markdown("**Recientes:**")
                 for notif in stats_notificaciones['ultimas_3']:
@@ -143,11 +161,10 @@ def render_sidebar():
                     </div>
                     """, unsafe_allow_html=True)
             else:
-                st.info("Sin notificaciones pendientes", icon="ℹ️")
+                st.caption("Sin notificaciones pendientes")
             
             st.divider()
             
-            # Botón para marcar todas como leídas
             if stats_notificaciones['no_leidas'] > 0:
                 from utils import marcar_todas_leidas
                 if st.button("Marcar todas como leídas", use_container_width=True, key="marcar_todas_sidebar"):
@@ -158,37 +175,39 @@ def render_sidebar():
         st.divider()
         
         # --- NAVEGACIÓN COMÚN ---
-        st.markdown("### Inicio")
+        st.markdown('<div class="sidebar-section">Inicio</div>', unsafe_allow_html=True)
         st.page_link("app.py", label="Panel Principal")
         
         # --- NAVEGACIÓN ADMINISTRADOR ---
         if st.session_state.rol == 'administrador':
-            st.markdown("### Administración")
+            st.markdown('<div class="sidebar-section">Administración</div>', unsafe_allow_html=True)
             st.page_link("pages/01_admin_pacientes.py", label="Pacientes")
             st.page_link("pages/02_admin_medicos.py", label="Personal Médico")
             st.page_link("pages/03_admin_dispositivos.py", label="Dispositivos")
             st.page_link("pages/04_monitoreo_crear.py", label="Monitoreo")
             
-            st.markdown("### Análisis")
+            st.markdown('<div class="sidebar-section">Análisis</div>', unsafe_allow_html=True)
             st.page_link("pages/05_monitoreo_dashboard.py", label="Visualización")
             st.page_link("pages/06_monitoreo_analisis.py", label="Análisis Clínico")
 
         # --- NAVEGACIÓN MÉDICO ---
         elif st.session_state.rol == 'medico':
-            st.markdown("### Gestión Médica")
+            st.markdown('<div class="sidebar-section">Gestión Médica</div>', unsafe_allow_html=True)
             st.page_link("pages/09_mis_pacientes.py", label="Mis Pacientes")
-            st.page_link("pages/10_notificaciones.py", label=f"Alertas {f'({notificaciones_pendientes})' if notificaciones_pendientes > 0 else ''}")
+            notif_label = f"Alertas ({notificaciones_pendientes})" if notificaciones_pendientes > 0 else "Alertas"
+            st.page_link("pages/10_notificaciones.py", label=notif_label)
             
-            st.markdown("### Análisis")
+            st.markdown('<div class="sidebar-section">Análisis</div>', unsafe_allow_html=True)
             st.page_link("pages/05_monitoreo_dashboard.py", label="Visualización")
             st.page_link("pages/06_monitoreo_analisis.py", label="Análisis Clínico")
 
         # --- NAVEGACIÓN PACIENTE ---
         elif st.session_state.rol == 'paciente':
-            st.markdown("### Mi Salud")
+            st.markdown('<div class="sidebar-section">Mi Salud</div>', unsafe_allow_html=True)
             st.page_link("pages/07_perfil_usuario.py", label="Perfil")
             st.page_link("pages/08_mediciones_personales.py", label="Mediciones")
-            st.page_link("pages/10_notificaciones.py", label=f"Alertas {f'({notificaciones_pendientes})' if notificaciones_pendientes > 0 else ''}")
+            notif_label = f"Alertas ({notificaciones_pendientes})" if notificaciones_pendientes > 0 else "Alertas"
+            st.page_link("pages/10_notificaciones.py", label=notif_label)
 
         # --- FOOTER / LOGOUT ---
         st.markdown("---")

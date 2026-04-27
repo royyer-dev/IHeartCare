@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import date, timedelta
+from datetime import date
 import time
 from sqlalchemy import text
 from core.auth import require_auth
@@ -14,7 +14,7 @@ render_sidebar()
 apply_global_theme()
 
 # --- CONFIGURACIÓN DE LA PÁGINA ---
-st.set_page_config(page_title="Gestión de Pacientes", page_icon="👥", layout="wide")
+st.set_page_config(page_title="Gestión de Pacientes", page_icon="❤️", layout="wide")
 
 # --- BREADCRUMBS ---
 breadcrumb_nav(["Home", "Administración", "Pacientes"])
@@ -26,68 +26,244 @@ except Exception:
     st.error("No se pudo establecer conexión con la base de datos.")
     st.stop()
 
-# --- ESTILOS CSS ---
-st.markdown("""
-<style>
-    .patient-card {
-        background: linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%);
-        border-left: 4px solid #0066CC;
-        padding: 16px;
-        border-radius: 8px;
-        margin-bottom: 12px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    }
-    
-    .patient-card:hover {
-        box-shadow: 0 8px 16px rgba(0, 102, 204, 0.15);
-        transform: translateX(4px);
-        border-left-color: #004499;
-    }
-    
-    .metric-badge {
-        display: inline-block;
-        background: white;
-        padding: 6px 12px;
-        border-radius: 16px;
-        font-size: 0.85em;
-        margin: 0 4px 4px 0;
-        border: 1px solid #e0e0e0;
-    }
-    
-    .metric-value {
-        font-weight: 600;
-        color: #0066CC;
-    }
-    
-    .status-healthy {
-        color: #10b981;
-    }
-    
-    .status-alert {
-        color: #ef4444;
-    }
-    
-    .status-warning {
-        color: #f59e0b;
-    }
-</style>
-""", unsafe_allow_html=True)
+# --- LIMPIAR ESTADO AL NAVEGAR DESDE EL SIDEBAR ---
+if st.session_state.get('_current_page') != 'pacientes':
+    st.session_state.pop('ver_detalle_paciente_id', None)
+    st.session_state['_current_page'] = 'pacientes'
 
-st.title("👥 Gestión de Pacientes")
+# --- CHECK: Si venimos del detalle de un paciente y queremos ver detalle ---
+if st.session_state.get('ver_detalle_paciente_id'):
+    paciente_id = st.session_state['ver_detalle_paciente_id']
+    
+    # Botón para regresar a la lista
+    if st.button("Regresar a la lista"):
+        del st.session_state['ver_detalle_paciente_id']
+        st.rerun()
+    
+    st.markdown("---")
+    
+    # Obtener datos completos del paciente
+    try:
+        with conn.session as s:
+            query = text("""
+                SELECT id, nombre, apellido_paterno, apellido_materno, fecha_nacimiento,
+                       curp, nss, sexo, estado_civil, domicilio, email, telefono, diagnostico
+                FROM public.pacientes
+                WHERE id = :pid
+            """)
+            resultado = s.execute(query, {'pid': paciente_id}).fetchone()
+        
+        if resultado:
+            nombre_completo = f"{resultado[1]} {resultado[2]} {resultado[3] or ''}".strip()
+            
+            st.markdown(f"## {nombre_completo}")
+            st.caption(f"NSS: {resultado[6] or 'No registrado'}  |  CURP: {resultado[5] or 'No registrado'}")
+            
+            st.markdown("---")
+            
+            # --- INFORMACIÓN PERSONAL ---
+            st.markdown("### Información Personal")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.markdown("**Fecha de Nacimiento**")
+                st.write(str(resultado[4]) if resultado[4] else "No registrada")
+                st.markdown("**Sexo**")
+                st.write(resultado[7] or "No registrado")
+            with col2:
+                st.markdown("**Estado Civil**")
+                st.write(resultado[8] or "No registrado")
+                st.markdown("**Teléfono**")
+                st.write(resultado[11] or "No registrado")
+            with col3:
+                st.markdown("**Correo Electrónico**")
+                st.write(resultado[10] or "No registrado")
+                st.markdown("**Domicilio**")
+                st.write(resultado[9] or "No registrado")
+            
+            # --- DIAGNÓSTICO ---
+            st.markdown("---")
+            st.markdown("### Diagnóstico")
+            st.write(resultado[12] if resultado[12] else "Sin diagnóstico registrado")
+            
+            # --- DISPOSITIVO ASIGNADO ---
+            st.markdown("---")
+            st.markdown("### Dispositivo Asignado")
+            try:
+                with conn.session as s:
+                    disp_query = text("""
+                        SELECT id, modelo, mac_address, activo, fecha_asignacion
+                        FROM public.dispositivos
+                        WHERE paciente_id = :pid
+                        ORDER BY activo DESC, fecha_asignacion DESC
+                        LIMIT 1
+                    """)
+                    dispositivo = s.execute(disp_query, {'pid': paciente_id}).fetchone()
+                
+                if dispositivo:
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.markdown("**Modelo**")
+                        st.write(dispositivo[1])
+                    with col2:
+                        st.markdown("**MAC Address**")
+                        st.write(dispositivo[2] or "N/A")
+                    with col3:
+                        st.markdown("**Estado**")
+                        st.write("Activo" if dispositivo[3] else "Inactivo")
+                else:
+                    st.info("No tiene dispositivo asignado")
+            except Exception as e:
+                st.warning(f"No se pudo cargar dispositivo: {e}")
+            
+            # --- MÉDICOS ASIGNADOS ---
+            st.markdown("---")
+            st.markdown("### Médicos Asignados")
+            try:
+                with conn.session as s:
+                    med_query = text("""
+                        SELECT pm_med.nombre, pm_med.apellido_paterno, pm_med.especialidad
+                        FROM public.personal_medico pm_med
+                        JOIN public.pacientes_medicos pm ON pm_med.id = pm.medico_id
+                        WHERE pm.paciente_id = :pid
+                        ORDER BY pm_med.nombre
+                    """)
+                    medicos = s.execute(med_query, {'pid': paciente_id}).fetchall()
+                
+                if medicos:
+                    for med in medicos:
+                        with st.container(border=True):
+                            st.markdown(f"**Dr(a). {med[0]} {med[1]}**")
+                            st.caption(f"Especialidad: {med[2]}")
+                else:
+                    st.info("No tiene médicos asignados")
+            except Exception as e:
+                st.warning(f"No se pudieron cargar médicos: {e}")
+            
+            # --- ALERTAS PENDIENTES ---
+            st.markdown("---")
+            st.markdown("### Alertas Pendientes")
+            try:
+                with conn.session as s:
+                    alertas_query = text("""
+                        SELECT a.tipo_alerta, a.mensaje, a.timestamp,
+                               m.tipo_medicion, m.valor, m.unidad_medida
+                        FROM public.alertas a
+                        JOIN public.mediciones m ON a.medicion_id = m.id
+                        JOIN public.dispositivos d ON m.dispositivo_id = d.id
+                        WHERE d.paciente_id = :pid AND a.leida = false
+                        ORDER BY a.timestamp DESC
+                        LIMIT 10
+                    """)
+                    alertas = s.execute(alertas_query, {'pid': paciente_id}).fetchall()
+                
+                if alertas:
+                    for alerta in alertas:
+                        with st.container(border=True):
+                            col1, col2 = st.columns([3, 1])
+                            with col1:
+                                st.markdown(f"**{alerta[3].replace('_', ' ').title()}:** {alerta[4]} {alerta[5]}")
+                                st.caption(alerta[1])
+                            with col2:
+                                st.caption(alerta[2].strftime('%d/%m/%Y %H:%M'))
+                else:
+                    st.info("No hay alertas pendientes")
+            except Exception as e:
+                st.warning(f"No se pudieron cargar alertas: {e}")
+            
+            # --- HISTORIAL DE MEDICIONES ---
+            st.markdown("---")
+            st.markdown("### Historial de Mediciones")
+            try:
+                with conn.session as s:
+                    historial_query = text("""
+                        SELECT 
+                            m.tipo_medicion,
+                            m.valor,
+                            m.unidad_medida,
+                            m.timestamp
+                        FROM public.mediciones m
+                        JOIN public.dispositivos d ON m.dispositivo_id = d.id
+                        WHERE d.paciente_id = :pid
+                        ORDER BY m.timestamp DESC
+                        LIMIT 100
+                    """)
+                    historial = s.execute(historial_query, {'pid': paciente_id}).fetchall()
+                
+                if historial:
+                    historial_df = pd.DataFrame(
+                        historial,
+                        columns=['Tipo de Medición', 'Valor', 'Unidad', 'Fecha/Hora']
+                    )
+                    
+                    for tipo_med in historial_df['Tipo de Medición'].unique():
+                        st.markdown(f"#### {tipo_med.replace('_', ' ').title()}")
+                        tipo_df = historial_df[historial_df['Tipo de Medición'] == tipo_med]
+                        
+                        col1, col2 = st.columns([2, 1])
+                        with col1:
+                            st.dataframe(
+                                tipo_df[['Valor', 'Unidad', 'Fecha/Hora']],
+                                use_container_width=True,
+                                hide_index=True
+                            )
+                        with col2:
+                            valores = pd.to_numeric(tipo_df['Valor'], errors='coerce')
+                            if not valores.empty:
+                                st.metric("Promedio", f"{valores.mean():.2f}")
+                                st.metric("Máximo", f"{valores.max():.2f}")
+                                st.metric("Mínimo", f"{valores.min():.2f}")
+                else:
+                    st.info("Sin historial de mediciones")
+            except Exception as e:
+                st.warning(f"No se pudo cargar historial: {e}")
+            
+            # --- BOTÓN VER EN VIVO ---
+            st.markdown("---")
+            col1, col2, col3 = st.columns([1, 1, 2])
+            with col1:
+                if st.button("Ver en Vivo", use_container_width=True, type="primary"):
+                    try:
+                        with conn.session as s:
+                            dispositivo_query = text("""
+                                SELECT id FROM public.dispositivos
+                                WHERE paciente_id = :pid AND activo = true
+                                LIMIT 1
+                            """)
+                            dispositivo_result = s.execute(dispositivo_query, {'pid': paciente_id}).fetchone()
+                        
+                        if dispositivo_result:
+                            st.session_state['selected_dispositivo_id'] = dispositivo_result[0]
+                            st.session_state['selected_paciente_id'] = paciente_id
+                            st.session_state['ir_a_visualizacion'] = True
+                            st.switch_page("pages/05_monitoreo_dashboard.py")
+                        else:
+                            st.warning("Este paciente no tiene un dispositivo activo asignado.")
+                    except Exception as e:
+                        st.error(f"Error al navegar: {e}")
+        else:
+            st.error("Paciente no encontrado")
+            if st.button("Regresar"):
+                del st.session_state['ver_detalle_paciente_id']
+                st.rerun()
+    
+    except Exception as e:
+        st.error(f"Error al cargar datos del paciente: {e}")
+    
+    st.stop()
+
+# --- PÁGINA PRINCIPAL: GESTIÓN DE PACIENTES ---
+st.title("Gestión de Pacientes")
 st.markdown("---")
 
 # --- TABS ---
-tab_listado, tab_registro, tab_editar = st.tabs(["📋 Ver Pacientes", "➕ Registrar Nuevo", "✏️ Editar/Eliminar"])
+tab_listado, tab_registro, tab_editar = st.tabs(["Ver Pacientes", "Registrar Nuevo", "Editar / Eliminar"])
 
-# ==================== TAB 1: VER PACIENTES ====================
+# ==================== TAB 1: VER PACIENTES (LISTA SIMPLIFICADA) ====================
 with tab_listado:
     
-    # Obtener datos de pacientes
     try:
         pacientes_df = conn.query(
-            'SELECT id, nombre, apellido_paterno, apellido_materno, email, telefono, diagnostico FROM public.pacientes ORDER BY nombre;',
+            'SELECT id, nombre, apellido_paterno, apellido_materno, diagnostico, nss FROM public.pacientes ORDER BY nombre;',
             ttl="10s"
         )
     except Exception as e:
@@ -99,13 +275,13 @@ with tab_listado:
         col1, col2 = st.columns([3, 1])
         with col1:
             search_term = st.text_input(
-                "🔍 Buscar paciente por nombre",
+                "Buscar paciente",
                 placeholder="Ingresa el nombre del paciente...",
                 key="search_paciente"
             )
         with col2:
             st.write("")
-            if st.button("🔄 Refrescar", use_container_width=True):
+            if st.button("Refrescar", use_container_width=True):
                 st.rerun()
         
         st.write("")
@@ -123,181 +299,36 @@ with tab_listado:
         if filtered_df.empty:
             st.info("No se encontraron pacientes con ese nombre.")
         else:
-            # --- LISTA DE PACIENTES ---
-            st.subheader(f"Pacientes Encontrados ({len(filtered_df)})")
+            st.subheader(f"Pacientes ({len(filtered_df)})")
             
             for idx, paciente in filtered_df.iterrows():
                 paciente_id = paciente['id']
-                nombre_completo = f"{paciente['nombre']} {paciente['apellido_paterno']} {paciente.get('apellido_materno', '')}".strip()
+                nombre_completo = f"{paciente['nombre']} {paciente['apellido_paterno']} {paciente.get('apellido_materno', '') or ''}".strip()
+                diagnostico = paciente.get('diagnostico', '') or 'Sin diagnóstico'
+                nss = paciente.get('nss', '') or 'N/A'
                 
-                # Obtener métricas recientes del paciente
-                try:
-                    with conn.session as s:
-                        metrics_query = text("""
-                            SELECT 
-                                m.tipo_medicion,
-                                m.valor,
-                                m.unidad_medida,
-                                m.timestamp
-                            FROM public.mediciones m
-                            JOIN public.dispositivos d ON m.dispositivo_id = d.id
-                            WHERE d.paciente_id = :pid
-                            ORDER BY m.timestamp DESC
-                            LIMIT 10
-                        """)
-                        
-                        metrics = s.execute(metrics_query, {'pid': paciente_id}).fetchall()
-                    
-                    # Agrupar métricas por tipo
-                    last_metrics = {}
-                    for m in metrics:
-                        if m[0] not in last_metrics:
-                            last_metrics[m[0]] = (m[1], m[2], m[3])
-                    
-                    # Obtener alertas pendientes
-                    alertas_query_result = conn.query(
-                        f"""SELECT COUNT(*) as alertas FROM public.alertas a 
-                           WHERE a.medicion_id IN (SELECT id FROM public.mediciones 
-                                                   WHERE dispositivo_id IN (SELECT id FROM public.dispositivos WHERE paciente_id = {paciente_id}))
-                           AND a.leida = false""",
-                        ttl="5s"
-                    )
-                    alertas = alertas_query_result.iloc[0]['alertas'] if not alertas_query_result.empty else 0
-                    
-                except Exception as e:
-                    last_metrics = {}
-                    alertas = 0
-                
-                # Estado del paciente
-                estado = "🟢 Estable"
-                color_estado = "status-healthy"
-                if alertas > 0:
-                    estado = f"🔴 {alertas} Alerta(s)"
-                    color_estado = "status-alert"
-                
-                # Card del paciente
                 with st.container(border=True):
-                    col1, col2, col3 = st.columns([2, 2, 1])
+                    col1, col2, col3, col4 = st.columns([3, 3, 2, 1])
                     
                     with col1:
-                        st.markdown(f"### {nombre_completo}")
-                        if paciente.get('diagnostico'):
-                            st.caption(f"📋 {paciente['diagnostico']}")
-                        if paciente.get('email'):
-                            st.caption(f"📧 {paciente['email']}")
+                        st.markdown(f"**{nombre_completo}**")
                     
                     with col2:
-                        st.write("**Últimas Métricas:**")
-                        if last_metrics:
-                            cols = st.columns(len(last_metrics))
-                            for col_idx, (tipo, (valor, unidad, timestamp)) in enumerate(list(last_metrics.items())[:3]):
-                                with cols[col_idx]:
-                                    st.metric(
-                                        label=tipo.replace('_', ' ').title(),
-                                        value=f"{valor} {unidad}",
-                                    )
-                        else:
-                            st.caption("Sin mediciones registradas")
+                        st.caption(f"{diagnostico}")
                     
                     with col3:
-                        st.write("")
-                        st.markdown(f"<div class='{color_estado}'>{estado}</div>", unsafe_allow_html=True)
+                        st.caption(f"NSS: {nss}")
                     
-                    # Expandir para ver detalles
-                    st.write("")
-                    if st.button(f"📊 Ver Detalles", key=f"btn_detalles_{paciente_id}"):
-                        st.session_state[f"expand_{paciente_id}"] = True
-                    
-                    # Mostrar detalles si está expandido
-                    if st.session_state.get(f"expand_{paciente_id}", False):
-                        st.markdown("---")
-                        st.subheader(f"Métricas Detalladas - {nombre_completo}")
-                        
-                        # Obtener historial completo
-                        try:
-                            with conn.session as s:
-                                historial_query = text("""
-                                    SELECT 
-                                        m.tipo_medicion,
-                                        m.valor,
-                                        m.unidad_medida,
-                                        m.timestamp
-                                    FROM public.mediciones m
-                                    JOIN public.dispositivos d ON m.dispositivo_id = d.id
-                                    WHERE d.paciente_id = :pid
-                                    ORDER BY m.timestamp DESC
-                                    LIMIT 100
-                                """)
-                                
-                                historial = s.execute(historial_query, {'pid': paciente_id}).fetchall()
-                            
-                            if historial:
-                                # Convertir a dataframe para mejor visualización
-                                historial_df = pd.DataFrame(
-                                    historial,
-                                    columns=['Tipo de Medición', 'Valor', 'Unidad', 'Fecha/Hora']
-                                )
-                                
-                                # Agrupar por tipo de medición
-                                for tipo_med in historial_df['Tipo de Medición'].unique():
-                                    st.markdown(f"#### {tipo_med.replace('_', ' ').title()}")
-                                    tipo_df = historial_df[historial_df['Tipo de Medición'] == tipo_med]
-                                    
-                                    col1, col2 = st.columns([2, 1])
-                                    with col1:
-                                        st.dataframe(
-                                            tipo_df[['Valor', 'Unidad', 'Fecha/Hora']],
-                                            use_container_width=True,
-                                            hide_index=True
-                                        )
-                                    with col2:
-                                        valores = pd.to_numeric(tipo_df['Valor'], errors='coerce')
-                                        if not valores.empty:
-                                            st.metric("Promedio", f"{valores.mean():.2f}")
-                                            st.metric("Máximo", f"{valores.max():.2f}")
-                                            st.metric("Mínimo", f"{valores.min():.2f}")
-                            else:
-                                st.info("Sin historial de mediciones para este paciente.")
-                        
-                        except Exception as e:
-                            st.error(f"Error al cargar historial: {e}")
-                        
-                        st.write("")
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            if st.button(f"👁️ Ver en Vivo", key=f"btn_vivo_{paciente_id}"):
-                                # Obtener dispositivo del paciente
-                                try:
-                                    with conn.session as s:
-                                        dispositivo_query = text("""
-                                            SELECT id FROM public.dispositivos
-                                            WHERE paciente_id = :pid AND activo = true
-                                            LIMIT 1
-                                        """)
-                                        dispositivo_result = s.execute(dispositivo_query, {'pid': paciente_id}).fetchone()
-                                    
-                                    if dispositivo_result:
-                                        dispositivo_id = dispositivo_result[0]
-                                        st.session_state['selected_dispositivo_id'] = dispositivo_id
-                                        st.session_state['selected_paciente_id'] = paciente_id
-                                        st.session_state['ir_a_visualizacion'] = True
-                                        st.success("Navegando a visualización en vivo...")
-                                        time.sleep(0.5)
-                                        st.switch_page("pages/05_monitoreo_dashboard.py")
-                                    else:
-                                        st.warning(f"Este paciente no tiene un dispositivo activo asignado.")
-                                except Exception as e:
-                                    st.error(f"Error al navegar: {e}")
-                        with col2:
-                            if st.button(f"❌ Cerrar Detalles", key=f"btn_cerrar_{paciente_id}"):
-                                st.session_state[f"expand_{paciente_id}"] = False
-                                st.rerun()
+                    with col4:
+                        if st.button("Ver detalle", key=f"btn_detalle_{paciente_id}", use_container_width=True):
+                            st.session_state['ver_detalle_paciente_id'] = paciente_id
+                            st.rerun()
     else:
         st.info("No hay pacientes registrados en el sistema.")
 
 # ==================== TAB 2: REGISTRAR PACIENTE ====================
 with tab_registro:
-    st.subheader("➕ Registrar Nuevo Paciente")
+    st.subheader("Registrar Nuevo Paciente")
     
     with st.form("registro_paciente_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
@@ -328,11 +359,11 @@ with tab_registro:
         
         col1, col2, col3 = st.columns([1, 1, 2])
         with col1:
-            submit = st.form_submit_button("✅ Registrar", use_container_width=True, type="primary")
+            submit = st.form_submit_button("Registrar", use_container_width=True, type="primary")
         
         if submit:
             if not all([nombre, apellido_paterno, fecha_nacimiento, curp, email, sexo]):
-                st.warning("⚠️ Por favor, completa todos los campos obligatorios.")
+                st.warning("Por favor, completa todos los campos obligatorios.")
             else:
                 try:
                     with conn.session as s:
@@ -358,19 +389,13 @@ with tab_registro:
                             "diagnostico": diagnostico
                         })
                         s.commit()
-                    st.success("✅ ¡Paciente registrado exitosamente!")
+                    st.success("Paciente registrado exitosamente")
                 except Exception as e:
-                    st.error(f"❌ Error al registrar: {e}")
+                    st.error(f"Error al registrar: {e}")
 
 # ==================== TAB 3: EDITAR/ELIMINAR PACIENTE ====================
 with tab_editar:
-    st.subheader("✏️ Editar o Eliminar Paciente")
-    st.info("Solo administradores pueden editar o eliminar pacientes.")
-    
-    # Verificar permiso de admin
-    if st.session_state.get('user_role') != 'administrador':
-        st.error("❌ Solo administradores tienen acceso a esta sección.")
-        st.stop()
+    st.subheader("Editar o Eliminar Paciente")
     
     # Obtener lista de pacientes activos
     try:
@@ -428,15 +453,14 @@ with tab_editar:
                     
                     st.markdown("---")
                     
-                    # Tabs para editar o eliminar
                     col_editar, col_eliminar = st.columns(2)
                     
                     with col_editar:
-                        if st.button("✏️ Editar Información", use_container_width=True):
+                        if st.button("Editar Información", use_container_width=True):
                             st.session_state['mostrar_form_editar'] = True
                     
                     with col_eliminar:
-                        if st.button("🗑️ Desactivar Paciente", use_container_width=True, type="secondary"):
+                        if st.button("Desactivar Paciente", use_container_width=True, type="secondary"):
                             st.session_state['confirmar_eliminar'] = True
                     
                     # Formulario de edición
@@ -472,9 +496,9 @@ with tab_editar:
                             
                             col_submit, col_cancel = st.columns(2)
                             with col_submit:
-                                submit_edit = st.form_submit_button("💾 Guardar Cambios", use_container_width=True, type="primary")
+                                submit_edit = st.form_submit_button("Guardar Cambios", use_container_width=True, type="primary")
                             with col_cancel:
-                                if st.form_submit_button("❌ Cancelar", use_container_width=True):
+                                if st.form_submit_button("Cancelar", use_container_width=True):
                                     st.session_state['mostrar_form_editar'] = False
                                     st.rerun()
                             
@@ -514,26 +538,25 @@ with tab_editar:
                                         })
                                         s.commit()
                                     
-                                    st.success("✅ ¡Cambios guardados exitosamente!")
+                                    st.success("Cambios guardados exitosamente")
                                     st.session_state['mostrar_form_editar'] = False
-                                    import time
                                     time.sleep(1)
                                     st.rerun()
                                 except Exception as e:
-                                    st.error(f"❌ Error al guardar cambios: {e}")
+                                    st.error(f"Error al guardar cambios: {e}")
                     
                     # Confirmación de eliminación
                     if st.session_state.get('confirmar_eliminar', False):
                         st.markdown("---")
                         st.warning(
-                            f"⚠️ ¿Estás seguro de que deseas desactivar a **{paciente_data['nombre']} {paciente_data['apellido_paterno']}**? "
+                            f"¿Estás seguro de que deseas desactivar a **{paciente_data['nombre']} {paciente_data['apellido_paterno']}**? "
                             f"Esta acción se puede revertir."
                         )
                         
                         col_confirmar, col_cancelar = st.columns(2)
                         
                         with col_confirmar:
-                            if st.button("🗑️ Sí, desactivar", use_container_width=True, type="primary"):
+                            if st.button("Sí, desactivar", use_container_width=True, type="primary"):
                                 try:
                                     with conn.session as s:
                                         query = text("""
@@ -544,16 +567,15 @@ with tab_editar:
                                         s.execute(query, {'pid': paciente_seleccionado})
                                         s.commit()
                                     
-                                    st.success("✅ ¡Paciente desactivado exitosamente!")
+                                    st.success("Paciente desactivado exitosamente")
                                     st.session_state['confirmar_eliminar'] = False
-                                    import time
                                     time.sleep(1)
                                     st.rerun()
                                 except Exception as e:
-                                    st.error(f"❌ Error al desactivar paciente: {e}")
+                                    st.error(f"Error al desactivar paciente: {e}")
                         
                         with col_cancelar:
-                            if st.button("❌ No, cancelar", use_container_width=True):
+                            if st.button("No, cancelar", use_container_width=True):
                                 st.session_state['confirmar_eliminar'] = False
                                 st.rerun()
             
@@ -561,4 +583,3 @@ with tab_editar:
                 st.error(f"Error al cargar datos del paciente: {e}")
     else:
         st.info("No hay pacientes activos para editar.")
-

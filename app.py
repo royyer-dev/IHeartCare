@@ -200,7 +200,7 @@ breadcrumb_nav(["Home"])
 if st.session_state.rol == 'administrador':
     
     hero_section(
-        title="🛡️ Panel de Administración",
+        title="Panel de Administración",
         subtitle="Gestión completa del sistema de monitoreo cardíaco",
         user_role=st.session_state.rol,
         user_name=st.session_state.username,
@@ -239,34 +239,34 @@ if st.session_state.rol == 'administrador':
         mediciones_hoy = 0
     
     # Cards de métricas principales
-    section_divider("📊 Resumen del Sistema")
+    section_divider("Resumen del Sistema")
     
     metrics_data = [
         {
             "title": "Pacientes Activos",
             "value": total_pacientes,
-            "icon": "👥",
+            "icon": "",
             "color": "primary",
             "subtitle": "Incorporados al sistema"
         },
         {
             "title": "Personal Médico",
             "value": total_medicos,
-            "icon": "👨‍⚕️",
+            "icon": "",
             "color": "info",
             "subtitle": "Médicos registrados"
         },
         {
             "title": "Dispositivos Activos",
             "value": dispositivos_activos,
-            "icon": "📱",
+            "icon": "",
             "color": "success",
             "subtitle": "Wearables conectados"
         },
         {
             "title": "Monitoreos Activos",
             "value": monitoreos_activos,
-            "icon": "⏱️",
+            "icon": "",
             "color": "warning",
             "subtitle": "Monitoreos en curso"
         },
@@ -274,132 +274,99 @@ if st.session_state.rol == 'administrador':
     
     metric_card_container(metrics_data, columns=4)
     
-    # Alertas y eventos críticos
-    col1, col2 = st.columns(2)
+    # --- ACCESOS RÁPIDOS CON TARJETAS VISUALES ---
+    section_divider("Gestión del Sistema")
     
-    with col1:
-        st.markdown("""
+    # Función auxiliar para card de navegación
+    def nav_card(title, description, color, page_path):
+        st.markdown(f"""
         <div style='
-            background: linear-gradient(135deg, #DC354520 0%, #DC354510 100%);
-            border: 1px solid #DC354540;
-            border-radius: 12px;
-            padding: 1.5rem;
-            text-align: center;
-        '>
-            <div style='font-size: 2rem; margin-bottom: 0.5rem;'>🚨</div>
-            <div style='font-size: 2rem; font-weight: 700; color: #DC3545;'>{}</div>
-            <div style='color: #6B7280; margin-top: 0.5rem;'>Alertas Pendientes</div>
+            background: white;
+            border: 1px solid #E5E7EB;
+            border-left: 4px solid {color};
+            border-radius: 10px;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 0.75rem;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        ' onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'; this.style.transform='translateX(4px)';"
+           onmouseout="this.style.boxShadow='none'; this.style.transform='none';">
+            <div style='font-size: 1rem; font-weight: 600; color: #1F2937; margin-bottom: 0.25rem;'>{title}</div>
+            <div style='font-size: 0.8rem; color: #9CA3AF;'>{description}</div>
         </div>
-        """.format(alertas_pendientes), unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown("""
-        <div style='
-            background: linear-gradient(135deg, #28A74520 0%, #28A74510 100%);
-            border: 1px solid #28A74540;
-            border-radius: 12px;
-            padding: 1.5rem;
-            text-align: center;
-        '>
-            <div style='font-size: 2rem; margin-bottom: 0.5rem;'>📈</div>
-            <div style='font-size: 2rem; font-weight: 700; color: #28A745;'>{}</div>
-            <div style='color: #6B7280; margin-top: 0.5rem;'>Mediciones (24h)</div>
-        </div>
-        """.format(mediciones_hoy), unsafe_allow_html=True)
-    
-    # Sección de accesos rápidos
-    section_divider("⚙️ Gestión del Sistema")
+        """, unsafe_allow_html=True)
+        st.page_link(page_path, label=f"Ir a {title}")
     
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown("### 📋 Administración de Datos")
-        
-        cols = st.columns(2)
-        with cols[0]:
-            st.page_link(
-                "pages/01_admin_pacientes.py",
-                label="👥 Pacientes",
-                icon="📌"
-            )
-            st.page_link(
-                "pages/02_admin_medicos.py",
-                label="👨‍⚕️ Personal Médico",
-                icon="📌"
-            )
-        
-        with cols[1]:
-            st.page_link(
-                "pages/03_admin_dispositivos.py",
-                label="📱 Dispositivos",
-                icon="📌"
-            )
-            st.page_link(
-                "pages/04_monitoreo_crear.py",
-                label="⏱️ Monitoreos",
-                icon="📌"
-            )
+        st.markdown("<div style='font-size: 0.75rem; font-weight: 700; color: #6B7280; letter-spacing: 1.5px; margin-bottom: 1rem;'>ADMINISTRACIÓN DE DATOS</div>", unsafe_allow_html=True)
+        nav_card("Pacientes", "Gestionar registros, datos y dispositivos de pacientes", "#0066CC", "pages/01_admin_pacientes.py")
+        nav_card("Personal Médico", "Administrar médicos, credenciales y asignaciones", "#17A2B8", "pages/02_admin_medicos.py")
+        nav_card("Dispositivos", "Registrar, editar y asignar dispositivos wearables", "#28A745", "pages/03_admin_dispositivos.py")
+        nav_card("Monitoreos", "Crear y gestionar sesiones de monitoreo activas", "#FF9800", "pages/04_monitoreo_crear.py")
     
     with col2:
-        st.markdown("### 📊 Análisis y Herramientas")
-        
-        cols = st.columns(2)
-        with cols[0]:
-            st.page_link(
-                "pages/05_monitoreo_dashboard.py",
-                label="📈 Dashboard Vivo",
-                icon="📌"
-            )
-            st.page_link(
-                "pages/06_monitoreo_analisis.py",
-                label="🔬 Análisis Clínico",
-                icon="📌"
-            )
+        st.markdown("<div style='font-size: 0.75rem; font-weight: 700; color: #6B7280; letter-spacing: 1.5px; margin-bottom: 1rem;'>ANÁLISIS Y HERRAMIENTAS</div>", unsafe_allow_html=True)
+        nav_card("Visualización en Vivo", "Dashboard de monitoreo en tiempo real con signos vitales", "#DC3545", "pages/05_monitoreo_dashboard.py")
+        nav_card("Análisis Clínico", "Tendencias, estadísticas y evaluación clínica por paciente", "#6F42C1", "pages/06_monitoreo_analisis.py")
     
-    # Últimas alertas críticas
-    section_divider("🔔 Alertas Recientes")
+    # --- ACTIVIDAD RECIENTE ---
+    section_divider("Actividad Reciente")
     
-    try:
-        conn = st.connection("postgresql", type="sql")
-        with conn.session as s:
-            query_alertas = text("""
-                SELECT a.id, a.tipo_alerta, a.mensaje, a.timestamp,
-                       p.nombre, p.apellido_paterno,
-                       m.tipo_medicion, m.valor
-                FROM public.alertas a
-                JOIN public.mediciones m ON a.medicion_id = m.id
-                JOIN public.dispositivos d ON m.dispositivo_id = d.id
-                JOIN public.pacientes p ON d.paciente_id = p.id
-                WHERE a.leida = false
-                ORDER BY a.timestamp DESC
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("**Últimos Pacientes Registrados**")
+        try:
+            conn2 = st.connection("postgresql", type="sql")
+            ultimos_pacientes = conn2.query("""
+                SELECT nombre, apellido_paterno, diagnostico, fecha_registro
+                FROM public.pacientes
+                ORDER BY fecha_registro DESC NULLS LAST
                 LIMIT 5
-            """)
-            alertas_criticas = s.execute(query_alertas).fetchall()
-        
-        if alertas_criticas:
-            for alerta in alertas_criticas:
-                color = "#DC3545" if alerta[1] == "crítica" else "#FF9800"
-                icon = "🚨" if alerta[1] == "crítica" else "⚠️"
-                
-                with st.container(border=True):
-                    col1, col2 = st.columns([0.1, 0.9])
-                    with col1:
-                        st.markdown(f"<div style='font-size: 1.5rem;'>{icon}</div>", unsafe_allow_html=True)
-                    with col2:
-                        st.markdown(f"**{alerta[4]} {alerta[5]}**")
-                        st.markdown(f"_{alerta[2]}_")
-                        st.caption(f"📊 {alerta[6]}: {alerta[7]} | {alerta[3].strftime('%d/%m %H:%M')}")
-        else:
-            st.info("✅ No hay alertas pendientes")
+            """, ttl="10s")
+            if not ultimos_pacientes.empty:
+                for _, pac in ultimos_pacientes.iterrows():
+                    nombre = f"{pac['nombre']} {pac['apellido_paterno']}"
+                    diag = pac.get('diagnostico', 'Sin diagnóstico') or 'Sin diagnóstico'
+                    with st.container(border=True):
+                        st.markdown(f"**{nombre}**")
+                        st.caption(diag)
+            else:
+                st.caption("Sin registros recientes")
+        except Exception:
+            st.caption("No se pudieron cargar los datos")
     
-    except Exception as e:
-        st.warning(f"No se pudieron cargar las alertas: {str(e)}")
+    with col2:
+        st.markdown("**Monitoreos Activos**")
+        try:
+            conn3 = st.connection("postgresql", type="sql")
+            monitoreos_recientes = conn3.query("""
+                SELECT p.nombre, p.apellido_paterno, m.motivo, m.fecha_inicio
+                FROM public.monitoreos m
+                JOIN public.pacientes p ON m.paciente_id = p.id
+                WHERE m.activo = true
+                ORDER BY m.fecha_inicio DESC
+                LIMIT 5
+            """, ttl="10s")
+            if not monitoreos_recientes.empty:
+                for _, mon in monitoreos_recientes.iterrows():
+                    nombre = f"{mon['nombre']} {mon['apellido_paterno']}"
+                    motivo = mon.get('motivo', 'Sin motivo') or 'Sin motivo'
+                    with st.container(border=True):
+                        st.markdown(f"**{nombre}**")
+                        st.caption(f"{motivo} — Desde {mon['fecha_inicio'].strftime('%d/%m/%Y')}")
+            else:
+                st.caption("Sin monitoreos activos")
+        except Exception:
+            st.caption("No se pudieron cargar los datos")
 
 # ========== DASHBOARD MÉDICO ==========
 elif st.session_state.rol == 'medico':
     
     hero_section(
-        title="👨‍⚕️ Panel del Médico",
+        title="Panel del Médico",
         subtitle="Monitoreo de tus pacientes asignados",
         user_role=st.session_state.rol,
         user_name=st.session_state.username,
@@ -433,27 +400,27 @@ elif st.session_state.rol == 'medico':
         alertas_pendientes = 0
     
     # Cards de métricas
-    section_divider("📊 Mis Estadísticas")
+    section_divider("Mis Estadísticas")
     
     metrics_data = [
         {
             "title": "Pacientes Asignados",
             "value": mis_pacientes,
-            "icon": "👥",
+            "icon": "",
             "color": "primary",
             "subtitle": "Bajo mi cuidado"
         },
         {
             "title": "Monitoreos Activos",
             "value": monitoreos_activos,
-            "icon": "⏱️",
+            "icon": "",
             "color": "warning",
             "subtitle": "En tiempo real"
         },
         {
             "title": "Alertas Pendientes",
             "value": alertas_pendientes,
-            "icon": "🚨",
+            "icon": "",
             "color": "danger",
             "subtitle": "Requieren atención"
         },
@@ -462,39 +429,35 @@ elif st.session_state.rol == 'medico':
     metric_card_container(metrics_data, columns=3)
     
     # Accesos rápidos
-    section_divider("⚙️ Herramientas")
+    section_divider("Herramientas")
     
     col1, col2 = st.columns(2)
     
     with col1:
         st.page_link(
             "pages/09_mis_pacientes.py",
-            label="👥 Ver Mis Pacientes",
-            icon="📌"
+            label="Ver Mis Pacientes"
         )
         st.page_link(
             "pages/05_monitoreo_dashboard.py",
-            label="📈 Dashboard de Visualización",
-            icon="📌"
+            label="Dashboard de Visualización"
         )
     
     with col2:
         st.page_link(
             "pages/06_monitoreo_analisis.py",
-            label="🔬 Panel de Análisis Clínico",
-            icon="📌"
+            label="Panel de Análisis Clínico"
         )
         st.page_link(
             "pages/10_notificaciones.py",
-            label="🔔 Ver Mis Alertas",
-            icon="📌"
+            label="Ver Mis Alertas"
         )
 
 # ========== DASHBOARD PACIENTE ==========
 elif st.session_state.rol == 'paciente':
     
     hero_section(
-        title="👤 Mi Panel de Salud",
+        title="Mi Panel de Salud",
         subtitle="Monitorea tu información médica en tiempo real",
         user_role=st.session_state.rol,
         user_name=st.session_state.username,
@@ -529,31 +492,31 @@ elif st.session_state.rol == 'paciente':
     
     if datos:
         # Métricas del paciente
-        section_divider("📊 Mi Estado Actual")
+        section_divider("Mi Estado Actual")
         
         metrics_data = [
             {
                 "title": "Estado del Dispositivo",
-                "value": "Activo ✓" if datos[4] else "Inactivo",
-                "icon": "📱",
+                "value": "Activo" if datos[4] else "Inactivo",
+                "icon": "",
                 "color": "success" if datos[4] else "danger",
             },
             {
                 "title": "Alertas Pendientes",
                 "value": datos[5],
-                "icon": "🚨",
+                "icon": "",
                 "color": "warning",
             },
             {
                 "title": "Médicos Asignados",
                 "value": datos[6],
-                "icon": "👨‍⚕️",
+                "icon": "",
                 "color": "info",
             },
             {
                 "title": "Total de Mediciones",
                 "value": datos[7],
-                "icon": "📈",
+                "icon": "",
                 "color": "primary",
             },
         ]
@@ -561,7 +524,7 @@ elif st.session_state.rol == 'paciente':
         metric_card_container(metrics_data, columns=4)
         
         # Información clínica
-        section_divider("🏥 Mi Información Clínica")
+        section_divider("Mi Información Clínica")
         
         col1, col2 = st.columns(2)
         
@@ -594,29 +557,26 @@ elif st.session_state.rol == 'paciente':
             """, unsafe_allow_html=True)
     
     # Accesos rápidos personalizados
-    section_divider("⚙️ Mi Información")
+    section_divider("Mi Información")
     
     col1, col2, col3 = st.columns(3)
     
     with col1:
         st.page_link(
             "pages/07_perfil_usuario.py",
-            label="👤 Mi Perfil",
-            icon="📌"
+            label="Mi Perfil"
         )
     
     with col2:
         st.page_link(
             "pages/08_mediciones_personales.py",
-            label="📈 Mis Mediciones",
-            icon="📌"
+            label="Mis Mediciones"
         )
     
     with col3:
         st.page_link(
             "pages/10_notificaciones.py",
-            label="🔔 Mis Alertas",
-            icon="📌"
+            label="Mis Alertas"
         )
 
 st.markdown('</div>', unsafe_allow_html=True)

@@ -295,39 +295,57 @@ def hero_section(
 ):
     """
     Renderiza una sección hero (bienvenida) con título y subtítulo animado.
-    
-    Args:
-        title: Título principal
-        subtitle: Subtítulo (descripción)
-        user_role: Rol del usuario autenticado
-        user_name: Nombre del usuario
     """
     
-    role_emoji = {
-        'administrador': '🛡️',
-        'medico': '👨‍⚕️',
-        'paciente': '👤',
+    role_labels = {
+        'administrador': 'ADMINISTRADOR',
+        'medico': 'MÉDICO',
+        'paciente': 'PACIENTE',
     }
     
-    emoji = role_emoji.get(user_role, '👤')
+    role_label = role_labels.get(user_role, '')
+    
+    # Time-based greeting
+    hour = datetime.now().hour
+    if hour < 12:
+        greeting = "Buenos días"
+    elif hour < 19:
+        greeting = "Buenas tardes"
+    else:
+        greeting = "Buenas noches"
     
     html = f"""
     <div style='
-        background: linear-gradient(135deg, #0066CC 0%, #2E7D8C 100%);
+        background: linear-gradient(135deg, #0F172A 0%, #1E3A5F 50%, #0F4C75 100%);
         color: white;
-        padding: 2rem;
+        padding: 2.5rem 2.5rem 2rem 2.5rem;
         border-radius: 16px;
         margin-bottom: 2rem;
-        animation: slideInDown 0.5s ease;
+        position: relative;
+        overflow: hidden;
     '>
-        <div style='display: flex; justify-content: space-between; align-items: start;'>
+        <div style='
+            position: absolute; top: 0; right: 0; width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(6,182,212,0.15) 0%, transparent 70%);
+            border-radius: 50%;
+            transform: translate(30%, -30%);
+        '></div>
+        <div style='
+            position: absolute; bottom: 0; left: 50%; width: 300px; height: 100px;
+            background: radial-gradient(ellipse, rgba(59,130,246,0.1) 0%, transparent 70%);
+            transform: translate(-50%, 30%);
+        '></div>
+        <div style='display: flex; justify-content: space-between; align-items: start; position: relative;'>
             <div>
-                <h1 style='margin: 0 0 0.5rem 0; font-size: 2rem;'>{title}</h1>
-                {f'<p style="margin: 0; font-size: 1rem; opacity: 0.95;">{subtitle}</p>' if subtitle else ''}
+                <h1 style='margin: 0 0 0.5rem 0; font-size: 1.75rem; font-weight: 700; letter-spacing: -0.5px;'>{title}</h1>
+                {f'<p style="margin: 0; font-size: 0.95rem; opacity: 0.7; font-weight: 400;">{subtitle}</p>' if subtitle else ''}
             </div>
-            {f'<div style="font-size: 3rem;">{emoji}</div>' if user_role else ''}
+            <div style='text-align: right;'>
+                <div style='font-size: 0.8rem; opacity: 0.5;'>{datetime.now().strftime('%d/%m/%Y')}</div>
+                <div style='font-size: 1.5rem; font-weight: 700; opacity: 0.9; margin-top: 0.25rem;'>{datetime.now().strftime('%H:%M')}</div>
+            </div>
         </div>
-        {f'<p style="margin: 1rem 0 0 0; font-size: 0.95rem; opacity: 0.9;">Bienvenido, <strong>{user_name}</strong></p>' if user_name else ''}
+        {f'<p style="margin: 1.25rem 0 0 0; font-size: 0.9rem; color: rgba(255,255,255,0.85); position: relative;">{greeting}, <strong style="color: #93C5FD;">{user_name}</strong></p>' if user_name else ''}
     </div>
     """
     
